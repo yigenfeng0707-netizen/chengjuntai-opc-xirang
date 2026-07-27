@@ -1,0 +1,57 @@
+# ========== 敏感文件（含密钥/密码，禁止提交）==========
+content_factory/config.yaml
+content_factory/users.json
+CREDENTIALS.txt
+*.env
+.env
+
+# ========== 数据库 ==========
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# ========== 日志 ==========
+logs/
+content_factory/logs/
+*.log
+
+# ========== Python 缓存 ==========
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# ========== 虚拟环境 ==========
+venv/
+.venv/
+env/
+
+# ========== 临时文件 ==========
+.temp/
+*.tmp
+*.bak
+*.swp
+*~
+
+# ========== 归档 ==========
+archive/
+
+# ========== IDE ==========
+.vscode/
+.idea/
+*.iml
+
+# ========== OS ==========
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# ========== 抓取的中间数据 ==========
+content_factory/data/bid_insights_cache.json
+content_factory/data/feedback.json
+content_factory/data/topics.json
+content_factory/vector_db/
+content_factory/export_pdf/

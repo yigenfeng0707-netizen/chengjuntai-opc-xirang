@@ -1,0 +1,23 @@
+{
+  "users": [
+    {
+      "username": "admin",
+      "password": "CHANGE_ME",
+      "role": "super_admin",
+      "enabled": true,
+      "created_at": "2026-07-27"
+    },
+    {
+      "username": "operator",
+      "password": "CHANGE_ME",
+      "role": "operator",
+      "enabled": true,
+      "created_at": "2026-07-27"
+    }
+  ],
+  "roles": {
+    "super_admin": ["*"],
+    "operator": ["run_task", "view", "export", "queue_control", "schedule_control"],
+    "guest": ["view"]
+  }
+}

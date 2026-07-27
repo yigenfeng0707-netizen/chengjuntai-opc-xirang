@@ -1,0 +1,22 @@
+[
+  {
+    "article_id": "ART20260727151556",
+    "file": "D:\\nl2sql_teleagent_prod\\content_factory\\articles\\ART20260727151556_MCP协议实战教程.md",
+    "ts": "2026-07-27T15:16:21.027924",
+    "pass": false,
+    "word_count": 494,
+    "issues": [
+      "篇幅不足：494字 < 800字"
+    ],
+    "suggestion": "请按以上问题点逐项整改后重新提交校验。"
+  },
+  {
+    "article_id": "ART20260727151938",
+    "file": "D:\\nl2sql_teleagent_prod\\content_factory\\articles\\ART20260727151938_MCP协议实战教程.md",
+    "ts": "2026-07-27T15:19:42.205477",
+    "pass": true,
+    "word_count": 1274,
+    "issues": [],
+    "suggestion": ""
+  }
+]

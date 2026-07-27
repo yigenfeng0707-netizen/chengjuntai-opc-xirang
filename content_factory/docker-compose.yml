@@ -1,0 +1,26 @@
+# AI 内容工厂 docker-compose
+# Windows Docker Desktop 可直接: docker-compose up -d
+version: "3.8"
+
+services:
+  content-factory:
+    build: .
+    container_name: content_factory
+    ports:
+      - "8090:8090"
+    volumes:
+      # 外部挂载数据目录，容器销毁数据不丢失
+      - ./articles:/app/articles
+      - ./export_pdf:/app/export_pdf
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./vector_db:/app/vector_db
+      - ./knowledge:/app/knowledge
+      - ./config.yaml:/app/config.yaml
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+    # 默认 Web 面板；改 command 可启动 MCP/调度/流水线
+    # command: ["python","mcp_server.py"]
+    # command: ["python","scheduler.py"]
+    # command: ["python","main.py","--pipeline"]

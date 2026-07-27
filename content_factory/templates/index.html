@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>AI 内容工厂 · 管理面板</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:"Microsoft YaHei",sans-serif}
+body{background:#f0f2f5;color:#333;font-size:14px}
+.header{background:#1a1f36;color:#fff;padding:14px 24px;display:flex;justify-content:space-between;align-items:center}
+.header h1{font-size:18px;font-weight:600}
+.header .user{font-size:13px;opacity:.85}
+.layout{display:flex;min-height:calc(100vh - 52px)}
+.sidebar{width:200px;background:#fff;border-right:1px solid #e8e8e8;padding:12px 0}
+.sidebar a{display:block;padding:11px 24px;color:#555;text-decoration:none;border-left:3px solid transparent}
+.sidebar a:hover{background:#f5f7fa}
+.sidebar a.active{color:#2f54eb;border-left-color:#2f54eb;background:#f0f5ff}
+.main{flex:1;padding:20px;overflow:auto}
+.card{background:#fff;border-radius:8px;padding:18px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.card h2{font-size:15px;margin-bottom:12px;color:#1a1f36;border-left:4px solid #2f54eb;padding-left:8px}
+.btn{display:inline-block;padding:6px 16px;background:#2f54eb;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;margin-right:8px}
+.btn:hover{background:#1d39c4}
+.btn.gray{background:#8c8c8c}
+.btn.sm{padding:4px 10px;font-size:12px}
+table{width:100%;border-collapse:collapse;margin-top:8px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #f0f0f0;font-size:13px}
+th{background:#fafafa;color:#666;font-weight:600}
+.tag{display:inline-block;background:#e6f7ff;color:#1890ff;padding:1px 8px;border-radius:10px;font-size:12px;margin-right:4px}
+input,select,textarea{padding:6px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px;width:100%}
+.row{display:flex;gap:12px;margin-bottom:10px}
+.row .col{flex:1}
+.logbox{background:#1a1f36;color:#52c41a;padding:12px;border-radius:6px;font-family:Consolas,monospace;font-size:12px;max-height:380px;overflow:auto;white-space:pre-wrap}
+.status-ok{color:#52c41a}.status-warn{color:#faad14}.status-err{color:#ff4d4f}
+.login{max-width:340px;margin:80px auto;background:#fff;padding:30px;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.12)}
+.login h2{text-align:center;margin-bottom:20px}
+.muted{color:#999;font-size:12px}
+pre.md{white-space:pre-wrap;background:#f9f9f9;padding:12px;border-radius:4px;max-height:400px;overflow:auto;font-size:12px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>AI 内容工厂 · 管理面板</h1>
+  <div class="user" id="userBox">未登录</div>
+</div>
+<div class="layout" id="appBox" style="display:none">
+  <div class="sidebar">
+    <a class="nav" data-v="dashboard">看板总览</a>
+    <a class="nav" data-v="topics">选题列表</a>
+    <a class="nav" data-v="articles">文稿预览</a>
+    <a class="nav" data-v="pipeline">流水线</a>
+    <a class="nav" data-v="queue">任务队列</a>
+    <a class="nav" data-v="schedule">定时任务</a>
+    <a class="nav" data-v="vector">向量检索</a>
+    <a class="nav" data-v="sync">标书同步</a>
+    <a class="nav" data-v="pdf">PDF导出</a>
+    <a class="nav" data-v="logs">系统日志</a>
+    <a class="nav" data-v="users">用户权限</a>
+  </div>
+  <div class="main" id="content"></div>
+</div>
+<div id="loginBox" class="login">
+  <h2>登录</h2>
+  <div class="row"><div class="col"><input id="lu" placeholder="用户名"></div></div>
+  <div class="row"><div class="col"><input id="lp" type="password" placeholder="密码"></div></div>
+  <button class="btn" style="width:100%" onclick="doLogin()">登录</button>
+  <p class="muted" style="margin-top:12px;text-align:center">首次部署请修改 users.json 中的默认密码</p>
+</div>
+<script>
+let TOKEN='',ROLE='',USER='';
+async function api(path,opts){opts=opts||{};opts.headers=opts.headers||{};opts.headers['Authorization']='Bearer '+TOKEN;const r=await fetch(path,opts);if(r.status===401){alert('登录失效');location.reload();}return r.json();}
+function doLogin(){const u=document.getElementById('lu').value,p=document.getElementById('lp').value;fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({u,p})}).then(r=>r.json()).then(d=>{if(d.token){TOKEN=d.token;ROLE=d.role;USER=d.user;document.getElementById('loginBox').style.display='none';document.getElementById('appBox').style.display='flex';document.getElementById('userBox').textContent=USER+' ('+ROLE+')';nav('dashboard');}else{alert(d.error||'登录失败');}});}
+document.querySelectorAll('.nav').forEach(a=>a.onclick=()=>nav(a.dataset.v));
+function nav(v){document.querySelectorAll('.nav').forEach(a=>a.classList.toggle('active',a.dataset.v===v));({dashboard:vd,topics:vt,articles:va,pipeline:vp,queue:vq,schedule:vsch,vector:vv,sync:vsy,pdf:vpdf,logs:vl,users:vu})[v]();}
+function card(t,h){return '<div class="card"><h2>'+h+'</h2>'+t+'</div>';}
+async function vd(){const s=await api('/api/status');const r=await api('/api/articles');document.getElementById('content').innerHTML=card('<table><tr><td>选题总数</td><td><b>'+(s.topics||0)+'</b></td><td>文稿总数</td><td><b>'+(r.length||0)+'</b></td></tr><tr><td>队列负载</td><td>'+s.queue_load+'</td><td>NL2SQL联动</td><td class="'+(s.nl2sql==='在线'?'status-ok':'status-err')+'">'+s.nl2sql+'</td></tr><tr><td>当前角色</td><td>'+ROLE+'</td><td>数据回流报告</td><td>'+(s.feedback||0)+'份</td></tr></table>','看板总览');}
+async function vt(){const t=await api('/api/topics');let rows=t.map(x=>'<tr><td>'+x.title+'</td><td>'+x.total_score+'</td><td><span class="tag">'+x.status+'</span></td><td class="muted">'+x.source+'</td><td>'+(ROLE!=='guest'?'<button class="btn sm" onclick=mt("'+x.id+'","selected")>选用</button><button class="btn sm gray" onclick=mt("'+x.id+'","discarded")>废弃</button>':'-')+'</td></tr>').join('');document.getElementById('content').innerHTML=card((ROLE!=='guest'?'<button class="btn" onclick=ct()>采集选题</button>':'')+'<p class="muted" style="margin:8px 0">共'+t.length+'条</p><table><tr><th>标题</th><th>总分</th><th>状态</th><th>来源</th><th>操作</th></tr>'+rows+'</table>','选题列表');}
+function ct(){api('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'collect_topics',params:{topk:6}})}).then(d=>{alert('采集完成:'+d.count+'条');vt();});}
+function mt(id,st){api('/api/topic/mark',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status:st})}).then(()=>vt());}
+async function va(){const r=await api('/api/articles');let rows=r.map(x=>'<tr><td>'+x.title+'</td><td>'+(x.review_pass?'<span class="status-ok">通过</span>':'<span class="status-warn">未通过</span>')+'</td><td class="muted">'+x.id+'</td><td><button class="btn sm" onclick=prev("'+x.file+'")>预览</button></td></tr>').join('');document.getElementById('content').innerHTML=card('<p class="muted" style="margin:8px 0">共'+r.length+'篇</p><table><tr><th>标题</th><th>质检</th><th>ID</th><th>预览</th></tr>'+rows+'</table>','文稿预览');}
+function prev(f){api('/api/article/preview?file='+encodeURIComponent(f)).then(d=>{document.getElementById('content').innerHTML=card('<pre class="md">'+(d.text||'无内容').replace(/</g,'&lt;')+'</pre>','文稿预览')+'<button class="btn" onclick="va()">返回</button>';});}
+async function vp(){document.getElementById('content').innerHTML=card('<div class="row"><div class="col"><label>选题</label><input id="ptopic" placeholder="如:MCP协议实战教程"></div><div class="col"><label>标签(逗号分隔)</label><input id="ptags" placeholder="MCP,智能体"></div></div><div class="row"><div class="col"><label>摘要</label><input id="psum" placeholder="可选"></div></div><button class="btn" onclick=runpipe()>执行全链路</button><p class="muted" style="margin-top:10px">全链路:选题→大纲→写作→初审→摘要→向量化</p>','流水线');}
+function runpipe(){const topic=document.getElementById('ptopic').value;if(!topic){alert('请输入选题');return;}const tags=document.getElementById('ptags').value.split(',').filter(x=>x);api('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'generate_article',params:{topic,summary:document.getElementById('psum').value,tags}})}).then(d=>{alert('生成完成:'+d.id+' 质检:'+(d.review_pass?'通过':'未通过'));va();});}
+async function vq(){const q=await api('/api/queue');let p=q.pending.map(x=>'<tr><td>'+x.task_name+'</td><td>'+x.priority+'</td><td>'+x.status+'</td></tr>').join('');document.getElementById('content').innerHTML=card('<p>负载:'+q.load+'</p><table><tr><th>任务</th><th>优先级</th><th>状态</th></tr>'+(p||'<tr><td colspan=3 class=muted>无排队任务</td></tr>')+'</table>','任务队列');}
+async function vsch(){const t=await api('/api/schedule');let rows=t.tasks.map(x=>'<tr><td>'+x.name+'</td><td>'+x.cron+'</td><td>'+x.action+'</td><td>'+(x.enabled?'<span class=status-ok>启用</span>':'<span class=status-warn>暂停</span>')+'</td><td>'+(ROLE!=='guest'?'<button class="btn sm" onclick=tg("'+x.id+'",'+(!x.enabled)+')>'+(x.enabled?'暂停':'启用')+'</button>':'-')+'</td></tr>').join('');document.getElementById('content').innerHTML=card('<table><tr><th>名称</th><th>Cron</th><th>动作</th><th>状态</th><th>操作</th></tr>'+rows+'</table>','定时任务');}
+function tg(id,en){api('/api/schedule/toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,enabled:en})}).then(()=>vsch());}
+async function vv(){document.getElementById('content').innerHTML=card('<input id="vq" placeholder="输入检索词,如:智能体 MCP"><button class="btn" onclick=vsearch()>检索</button><div id="vres" style="margin-top:12px"></div>','向量检索');}
+function vsearch(){const q=document.getElementById('vq').value;api('/api/vector/search?q='+encodeURIComponent(q)).then(r=>{let h=r.map(x=>'<div style="padding:8px 0;border-bottom:1px solid #f0f0f0"><b>'+x.title+'</b> <span class="muted">相关度:'+x.score+'</span><br><span class="muted">'+x.source+'</span></div>').join('');document.getElementById('vres').innerHTML=h||'<p class=muted>无结果</p>';});}
+async function vsy(){document.getElementById('content').innerHTML=card('<p>正向推送:内容工厂→BidAutoPipeline知识库</p><p>反向拉取:标书项目→垂直领域选题</p><button class="btn" onclick=sf()>执行正向同步</button><button class="btn gray" onclick=sb()>执行反向拉取</button><div id="sres" style="margin-top:12px"></div>','标书同步');}
+function sf(){api('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'sync_knowledge_to_bid'})}).then(d=>{document.getElementById('sres').innerHTML='<p class=status-ok>同步完成:'+d.synced_count+'篇</p>';});}
+function sb(){api('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'fetch_bid_project_themes'})}).then(d=>{let h=d.topic_suggestions.map(x=>'<div class=tag>'+x.industry+'</div> '+x.topic).join('<br>');document.getElementById('sres').innerHTML=h;});}
+async function vpdf(){const r=await api('/api/articles');document.getElementById('content').innerHTML=card('<button class="btn" onclick=pdfall()>批量导出全部</button><p class=muted style=margin:8px 0>或单篇导出:</p><table><tr><th>标题</th><th>操作</th></tr>'+r.map(x=>'<tr><td>'+x.title+'</td><td><button class="btn sm" onclick=pdfone("'+x.id+'")>导出</button></td></tr>').join('')+'</table><div id="pdres" style=margin-top:10px></div>','PDF导出');}
+function pdfall(){api('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'export_all'})}).then(d=>{document.getElementById('pdres').innerHTML='<p class=status-ok>成功'+d.exported.length+' 失败'+d.failed.length+'</p>';});}
+function pdfone(id){api('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'export_article_pdf',params:{article_id:id}})}).then(d=>{alert('已导出:'+d.file);});}
+async function vl(){const l=await api('/api/logs');document.getElementById('content').innerHTML=card('<div class="logbox">'+l.join('\n')+'</div>','系统日志(近1天)');}
+async function vu(){const r=await api('/api/users');let rows=r.map(x=>'<tr><td>'+x.username+'</td><td>'+x.role+'</td><td>'+(x.enabled?'<span class=status-ok>启用</span>':'<span class=status-warn>禁用</span>')+'</td></tr>').join('');document.getElementById('content').innerHTML=card('<table><tr><th>用户名</th><th>角色</th><th>状态</th></tr>'+rows+'</table>','用户权限');}
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "tasks": [
+    {
+      "id": "daily_topic_collect",
+      "name": "每日资讯选题采集",
+      "enabled": true,
+      "cron": "0 9 * * *",
+      "action": "collect_topics",
+      "params": { "topk": 6 }
+    },
+    {
+      "id": "weekly_article_gen",
+      "name": "每周自动生成文稿",
+      "enabled": false,
+      "cron": "0 10 * * 1",
+      "action": "generate_article",
+      "params": { "topic_index": 0 }
+    },
+    {
+      "id": "daily_knowledge_sync",
+      "name": "每日知识库同步",
+      "enabled": true,
+      "cron": "30 18 * * *",
+      "action": "sync_knowledge_to_bid",
+      "params": {}
+    }
+  ]
+}

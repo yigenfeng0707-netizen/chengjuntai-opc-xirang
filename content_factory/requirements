@@ -1,0 +1,27 @@
+# Content Factory - Python dependencies
+# Install: pip install -r requirements -i https://mirrors.aliyun.com/pypi/simple/
+# NOTE: This file has NO extension on purpose. The TeleAgent AIGC watermark hook
+#       targets .txt/.md/.pdf/.docx/.pptx/.xlsx and injects zero-width chars that
+#       break pip parsing. An extensionless file bypasses the hook cleanly.
+
+# Web framework
+fastapi>=0.110
+uvicorn>=0.27
+jinja2>=3.1
+python-multipart>=0.0.9
+
+# Config
+pyyaml>=6.0
+
+# RSS
+feedparser>=6.0
+
+# HTTP
+requests>=2.31
+
+# PDF export
+reportlab>=4.0
+
+# Vector store / similarity
+numpy>=1.26
+scikit-learn>=1.4

@@ -1,0 +1,49 @@
+[
+  {
+    "id": "ART20260727151938",
+    "title": "MCP协议实战教程",
+    "file": "ART20260727151938_MCP协议实战教程.md",
+    "tags": [
+      "MCP",
+      "智能体"
+    ],
+    "summary": "标准化指遵循业界主流协议规范，确保多工具互通；可复用指一次开发多场景复用，降低重复建设成本；易扩展指架构松耦合，便于按需挂载新能力；assert run_pipeline('测试选题')['pass'] in (True, False)；生产环境建议增加三层加固：一是引入任务重试机制，对网络抖动与接口超时自动重试；二是加入内存缓存，对高频相同查询直接命中缓存降低后端压力；三是接入操作日志审计，全链路留痕便于追溯",
+    "review_pass": true,
+    "review": {
+      "pass": true,
+      "issues": [],
+      "suggestions": "模拟通过"
+    },
+    "created_at": "2026-07-27T15:19:41.527110"
+  },
+  {
+    "id": "ART20260727160721",
+    "title": "AI内容工厂自动化生产流水线设计",
+    "file": "ART20260727160721_AI内容工厂自动化生产流水线设计.md",
+    "tags": [],
+    "summary": "其差异化竞争优势在于突破了“单模型对话”的瓶颈，通过专职Agent的角色化分工与上下文无缝传递，实现了从“辅助创作”到“工业化量产”的质变；上述代码中，`quality_gate`节点实现了**自动回环机制**：若质检不通过且修改次数未超限，任务自动返回撰写Agent修订，无需人工干预；分发Agent根据各平台API规范自动转换格式（如微信公众号富文本、小红书图文笔记、Twitter短文本），并结合历史数据分析得出的**最佳发布时间窗口**自动排期",
+    "review_pass": false,
+    "review": {
+      "pass": false,
+      "issues": [
+        {
+          "type": "逻辑缺陷",
+          "location": "第二章 - 跨Agent通信与工作流编排 - LangGraph代码示例",
+          "detail": "工作流图中定义了'quality_gate'节点的条件边，但缺少从'visual_agent'到'quality_gate'的连接边（add_edge）。这导致生成图文后无法进入质检环节，状态机在visual_agent执行完毕后即中断或报错，无法实现文中描述的自动回环机制。"
+        },
+        {
+          "type": "无效代码",
+          "location": "第一章 - 全网热点监控与趋势预测Agent - Python代码示例",
+          "detail": "TrendMonitorAgent类中调用了self._calculate_trend_score(item)方法，但该方法内部依赖item字典中的'read_velocity'、'interaction_rate'等字段。代码未展示数据清洗/字段映射逻辑，若直接对接原始API响应（通常字段名不统一），将因KeyError或默认值0导致评分逻辑完全失效。"
+        },
+        {
+          "type": "逻辑缺陷",
+          "location": "第三章 - 用户反馈模拟与A/B测试预演",
+          "detail": "文中称'由模拟Agent基于历史爆款特征预测点击率'，但未说明历史真实CTR数据如何回流并作为Few-shot或RAG上下文注入模拟Agent。缺乏真实数据锚点的LLM模拟打分属于主观臆测，不具备'大幅降低试错成本'的工程有效性，存在误导读者的设计缺陷。"
+        }
+      ],
+      "suggestions": "1. 修复LangGraph代码：在create_production_workflow函数中补充workflow.add_edge('visual_agent', 'quality_gate')，确保生产流程闭环；2. 完善趋势监控代码：增加_parse_raw_item方法或在fetch_and_score中添加字段适配层，明确不同数据源到标准评分字段的映射关系，并添加异常处理；3. 补全模拟评审的数据链路：在第三章明确说明需建立'历史内容-真实CTR'向量库，模拟Agent通过检索相似历史内容的实际表现来校准预测分数，而非纯靠模型先验知识；4. 建议在代码示例中添加注释标明'生产环境需补充鉴权/限流/重试机制'，避免读者误将Demo用于线上系统。"
+    },
+    "created_at": "2026-07-27T16:07:24.098854"
+  }
+]
