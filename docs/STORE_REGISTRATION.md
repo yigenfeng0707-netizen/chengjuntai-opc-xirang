@@ -22,3 +22,8 @@
 - 社会价值：降低个体经营数字化门槛
 - 商业模式：订阅 + Token 用量 + 模板战役包
 - 身份证号：本人填写（不入库、不入 Git）
+
+## GitHub（成军台主仓）
+
+- https://github.com/yigenfeng0707-netizen/chengjuntai-opc-xirang
+- legacy 底座：https://github.com/yigenfeng0707-netizen/nl2sql-teleagent
