@@ -27,21 +27,33 @@ import sqlite3
 import time
 import random
 import datetime
+import argparse
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "bid_telecom.db")
 JSON_PATH = os.path.join(BASE_DIR, "logs", "real_projects.json")
 LOG_PATH = os.path.join(BASE_DIR, "logs", "fetch.log")
+META_PATH = os.path.join(BASE_DIR, "logs", "fetch_meta.json")
+STATUS_PATH = os.path.join(BASE_DIR, "logs", "fetch_status.json")
 
 API_URL = "https://zfcg.czt.zj.gov.cn/portal/searchHome"
 DISTRICT_API = "https://zfcg.czt.zj.gov.cn/api/core/getSubDistrictByPid"
 HEADERS = {
     "Content-Type": "application/json",
     "Accept": "application/json, text/plain, */*",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/122.0.0.0 Safari/537.36"
+    ),
     "Origin": "https://zfcg.czt.zj.gov.cn",
     "Referer": "https://zfcg.czt.zj.gov.cn/ZcyAnnouncement/index.html",
 }
+# 请求节奏：列表 0.2~0.45s；详情 0.15~0.35s；失败指数退避
+LIST_SLEEP = (0.20, 0.45)
+DETAIL_SLEEP = (0.15, 0.35)
+MAX_RETRIES = 3
 
 SUBCODES = {"project": "110-306476", "result": "110-188043"}
 
@@ -113,13 +125,158 @@ CITY_MAP = {
 def log(msg):
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     line = f"{ts} | {msg}"
-    print(line)
+    print(line, flush=True)
     try:
         os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
         with open(LOG_PATH, "a", encoding="utf-8") as f:
             f.write(line + "\n")
-    except:
+    except Exception:
         pass
+
+
+def _write_json(path, obj):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False, indent=2)
+
+
+def write_status(**kwargs):
+    """供 UI / refresh 脚本轮询的进度文件。"""
+    cur = {}
+    if os.path.exists(STATUS_PATH):
+        try:
+            with open(STATUS_PATH, "r", encoding="utf-8") as f:
+                cur = json.load(f) or {}
+        except Exception:
+            cur = {}
+    cur.update(kwargs)
+    cur["updated_at"] = datetime.datetime.now().isoformat(timespec="seconds")
+    _write_json(STATUS_PATH, cur)
+    return cur
+
+
+def write_meta(**kwargs):
+    cur = {}
+    if os.path.exists(META_PATH):
+        try:
+            with open(META_PATH, "r", encoding="utf-8") as f:
+                cur = json.load(f) or {}
+        except Exception:
+            cur = {}
+    cur.update(kwargs)
+    _write_json(META_PATH, cur)
+    return cur
+
+
+def load_meta():
+    if not os.path.exists(META_PATH):
+        return {}
+    try:
+        with open(META_PATH, "r", encoding="utf-8") as f:
+            return json.load(f) or {}
+    except Exception:
+        return {}
+
+
+def load_status():
+    if not os.path.exists(STATUS_PATH):
+        return {"running": False}
+    try:
+        with open(STATUS_PATH, "r", encoding="utf-8") as f:
+            return json.load(f) or {"running": False}
+    except Exception:
+        return {"running": False}
+
+
+def ensure_schema(conn=None):
+    own = conn is None
+    if own:
+        conn = sqlite3.connect(DB_PATH)
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS bid_projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_name TEXT,
+            industry TEXT,
+            region TEXT,
+            bid_date TEXT,
+            win_amount REAL,
+            status TEXT,
+            owner_user_id TEXT
+        )
+        """
+    )
+    conn.commit()
+    if own:
+        conn.close()
+
+
+def db_stats(db_path=None):
+    path = db_path or DB_PATH
+    out = {
+        "db_path": path,
+        "db_exists": os.path.exists(path),
+        "row_count": 0,
+        "real_count": 0,
+        "demo_count": 0,
+        "mtime": None,
+        "last_refresh": None,
+        "last_ok": None,
+        "last_error": None,
+    }
+    meta = load_meta()
+    out["last_refresh"] = meta.get("last_refresh")
+    out["last_ok"] = meta.get("last_ok")
+    out["last_error"] = meta.get("last_error")
+    if not os.path.exists(path):
+        return out
+    try:
+        out["mtime"] = datetime.datetime.fromtimestamp(
+            os.path.getmtime(path)
+        ).isoformat(timespec="seconds")
+        conn = sqlite3.connect(path)
+        ensure_schema(conn)
+        out["row_count"] = conn.execute("SELECT COUNT(*) FROM bid_projects").fetchone()[0]
+        out["real_count"] = conn.execute(
+            "SELECT COUNT(*) FROM bid_projects WHERE owner_user_id=?", ("real",)
+        ).fetchone()[0]
+        out["demo_count"] = conn.execute(
+            "SELECT COUNT(*) FROM bid_projects WHERE owner_user_id=?", ("demo",)
+        ).fetchone()[0]
+        conn.close()
+    except Exception as ex:
+        out["last_error"] = str(ex)
+    return out
+
+
+def _request_with_retry(method, url, headers=None, **kwargs):
+    """带指数退避的 requests 封装；尊重 anti-bot，失败不抛崩。"""
+    timeout = kwargs.pop("timeout", 30)
+    hdrs = headers or HEADERS
+    last_err = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            if method == "GET":
+                resp = requests.get(url, headers=hdrs, timeout=timeout, **kwargs)
+            else:
+                resp = requests.post(url, headers=hdrs, timeout=timeout, **kwargs)
+            if resp.status_code == 200:
+                return resp
+            if resp.status_code in (403, 429, 503):
+                wait = min(8, 1.5 ** attempt) + random.uniform(0.2, 0.8)
+                log(f"  [RETRY] HTTP {resp.status_code} {url[:60]}… wait {wait:.1f}s ({attempt}/{MAX_RETRIES})")
+                time.sleep(wait)
+                last_err = f"HTTP {resp.status_code}"
+                continue
+            log(f"  [WARN] HTTP {resp.status_code} for {url[:80]}")
+            return resp
+        except Exception as e:
+            last_err = e
+            wait = min(8, 1.5 ** attempt) + random.uniform(0.2, 0.8)
+            log(f"  [RETRY] {e} wait {wait:.1f}s ({attempt}/{MAX_RETRIES})")
+            time.sleep(wait)
+    log(f"  [ERROR] exhausted retries: {last_err}")
+    return None
 
 
 def classify_industry(title):
@@ -173,7 +330,8 @@ def estimate_amount(title, method):
 DETAIL_API = "https://zfcg.czt.zj.gov.cn/portal/detail"
 DETAIL_HEADERS = {
     "Accept": "application/json, text/plain, */*",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+    "User-Agent": HEADERS["User-Agent"],
     "Origin": "https://zfcg.czt.zj.gov.cn",
     "Referer": "https://zfcg.czt.zj.gov.cn/site/detail",
 }
@@ -345,38 +503,41 @@ def extract_amount_from_content(content_html, ann_type):
 
 def fetch_detail_amount(article_id):
     """调用 /portal/detail API获取单条公告详情，提取真实金额（万元）"""
+    resp = _request_with_retry(
+        "GET", DETAIL_API,
+        headers=DETAIL_HEADERS,
+        params={"articleId": article_id, "parentId": "600007"},
+        timeout=20,
+    )
+    if resp is None or resp.status_code != 200:
+        return None, "", ""
     try:
-        resp = requests.get(DETAIL_API,
-                           params={"articleId": article_id, "parentId": "600007"},
-                           headers=DETAIL_HEADERS, timeout=20)
-        if resp.status_code == 200:
-            data = resp.json()
-            inner = data.get("result", {}).get("data", {})
-            ann_type = inner.get("announcementType")
-            content = inner.get("content", "")
-            project_code = inner.get("projectCode", "")
-            project_name = inner.get("projectName", "")
-            amount = extract_amount_from_content(content, ann_type)
-            # 提取失败时保存原始内容供调试分析
-            if amount is None and content:
-                debug_path = os.path.join(BASE_DIR, "logs", "amount_missed")
-                os.makedirs(debug_path, exist_ok=True)
-                # 与 extract_amount_from_content 相同的CSS清理
-                dtext = re.sub(r'<style[^>]*>.*?</style>', ' ', content, flags=re.DOTALL | re.IGNORECASE)
-                dtext = re.sub(r'[^{}<]*\{[^}]*\}', ' ', dtext)
-                dtext = re.sub(r'<[^>]+>', ' ', dtext)
-                dtext = re.sub(r'&nbsp;', ' ', dtext)
-                dtext = re.sub(r'&[a-zA-Z]+;', '', dtext)
-                dtext = re.sub(r'\s+', ' ', dtext).strip()
-                safe_name = article_id.replace('/', '_').replace('=', '_')
-                with open(os.path.join(debug_path, f"{safe_name}.txt"), "w", encoding="utf-8") as df:
-                    df.write(f"articleId: {article_id}\n")
-                    df.write(f"announcementType: {ann_type}\n")
-                    df.write(f"projectName: {project_name}\n\n")
-                    df.write(dtext[:5000])
-            return amount, project_code, project_name
+        data = resp.json()
+        inner = data.get("result", {}).get("data", {})
+        ann_type = inner.get("announcementType")
+        content = inner.get("content", "")
+        project_code = inner.get("projectCode", "")
+        project_name = inner.get("projectName", "")
+        amount = extract_amount_from_content(content, ann_type)
+        if amount is None and content:
+            debug_path = os.path.join(BASE_DIR, "logs", "amount_missed")
+            os.makedirs(debug_path, exist_ok=True)
+            dtext = re.sub(r'<style[^>]*>.*?</style>', ' ', content, flags=re.DOTALL | re.IGNORECASE)
+            dtext = re.sub(r'[^{}<]*\{[^}]*\}', ' ', dtext)
+            dtext = re.sub(r'<[^>]+>', ' ', dtext)
+            dtext = re.sub(r'&nbsp;', ' ', dtext)
+            dtext = re.sub(r'&[a-zA-Z]+;', '', dtext)
+            dtext = re.sub(r'\s+', ' ', dtext).strip()
+            safe_name = article_id.replace('/', '_').replace('=', '_')
+            with open(os.path.join(debug_path, f"{safe_name}.txt"), "w", encoding="utf-8") as df:
+                df.write(f"articleId: {article_id}\n")
+                df.write(f"announcementType: {ann_type}\n")
+                df.write(f"projectName: {project_name}\n\n")
+                df.write(dtext[:5000])
+        time.sleep(random.uniform(*DETAIL_SLEEP))
+        return amount, project_code, project_name
     except Exception as e:
-        log(f"  [WARN] detail fetch failed for {article_id}: {e}")
+        log(f"  [WARN] detail parse failed for {article_id}: {e}")
     return None, "", ""
 
 
@@ -384,46 +545,74 @@ def fetch_notices(sub_code, district_code):
     payload = {"code": "110-606633", "subCodes": [sub_code],
                "districtCode": district_code, "pageSize": 20, "isStick": True,
                "needTotal": False, "needNewCnt": False, "needValidCount": False}
-    try:
-        resp = requests.post(API_URL, json=payload, headers=HEADERS, timeout=30)
-        if resp.status_code == 200:
+    resp = _request_with_retry("POST", API_URL, json=payload, timeout=30)
+    if resp is not None and resp.status_code == 200:
+        try:
             return resp.json().get("result", {}).get("data", {}).get("children", []) or []
-    except Exception as e:
-        log(f"  [ERROR] fetch: {e}")
+        except Exception as e:
+            log(f"  [ERROR] parse notices: {e}")
     return []
 
 
 def get_all_districts():
-    """获取浙江省所有区县代码"""
-    resp = requests.get(f"{DISTRICT_API}?pId=953", headers=HEADERS, timeout=15)
-    cities = resp.json().get("result", [])
+    """获取浙江省所有区县代码；站点不可达时返回空 dict（不抛崩）。"""
+    resp = _request_with_retry("GET", f"{DISTRICT_API}?pId=953", timeout=15)
+    if resp is None or resp.status_code != 200:
+        log("[ERROR] 无法获取区县列表（站点不可达或被拦截）")
+        return {}
+    try:
+        cities = resp.json().get("result", []) or []
+    except Exception as e:
+        log(f"[ERROR] 区县 JSON 解析失败: {e}")
+        return {}
     all_districts = {}
     for city in cities:
         all_districts[city["name"]] = city["code"]
         try:
-            resp2 = requests.get(f"{DISTRICT_API}?pId={city['id']}", headers=HEADERS, timeout=10)
-            for sub in resp2.json().get("result", []):
-                all_districts[f"{city['name']}/{sub['name']}"] = sub["code"]
+            resp2 = _request_with_retry(
+                "GET", f"{DISTRICT_API}?pId={city['id']}", timeout=10
+            )
+            if resp2 is not None and resp2.status_code == 200:
+                for sub in resp2.json().get("result", []) or []:
+                    all_districts[f"{city['name']}/{sub['name']}"] = sub["code"]
             time.sleep(0.2)
-        except:
+        except Exception:
             pass
     return all_districts
 
 
-def fetch_all():
-    """抓取所有区县的通信类项目"""
+def fetch_all(max_districts=None, skip_detail=False):
+    """抓取区县的通信类项目。max_districts 用于快速冒烟；skip_detail 跳过金额详情。"""
+    write_status(
+        running=True, phase="districts", message="获取浙江省区县代码…",
+        progress=0, fetched=0, error=None,
+    )
     log("获取浙江省区县代码...")
     districts = get_all_districts()
-    log(f"共 {len(districts)} 个区县")
+    if not districts:
+        write_status(running=False, phase="failed", message="区县列表为空/站点不可达", ok=False)
+        return []
+    items = list(districts.items())
+    if max_districts and max_districts > 0:
+        items = items[:max_districts]
+        log(f"快速模式: 仅抓取前 {len(items)} / {len(districts)} 个区县")
+    log(f"共 {len(items)} 个区县待抓取")
 
     seen_ids = set()
     all_projects = []
 
-    for i, (dist_name, dist_code) in enumerate(districts.items()):
-        if i % 30 == 0:
-            log(f"进度: {i}/{len(districts)} (已获取: {len(all_projects)}条)")
+    for i, (dist_name, dist_code) in enumerate(items):
+        if i % 10 == 0 or i == len(items) - 1:
+            pct = int(100 * i / max(len(items), 1))
+            log(f"进度: {i}/{len(items)} (已获取: {len(all_projects)}条)")
+            write_status(
+                running=True, phase="crawl", progress=pct,
+                message=f"抓取 {dist_name} ({i}/{len(items)})",
+                fetched=len(all_projects), district=dist_name,
+            )
         for sub_type, sub_code in SUBCODES.items():
-            for n in fetch_notices(sub_code, dist_code):
+            notices = fetch_notices(sub_code, dist_code)
+            for n in notices:
                 aid = n.get("articleId", "")
                 if aid in seen_ids:
                     continue
@@ -435,16 +624,18 @@ def fetch_all():
                 if not industry:
                     continue
 
-                # 调用详情API获取真实金额
-                real_amount, proj_code, proj_name = fetch_detail_amount(aid)
-                # 如果详情API没拿到金额，回退估算
-                if real_amount is None:
+                if skip_detail:
                     real_amount = estimate_amount(title, n.get("purchaseMethod", "其他"))
+                    proj_code, proj_name = "", ""
                     amount_source = "估算"
                 else:
-                    amount_source = "政采网"
+                    real_amount, proj_code, proj_name = fetch_detail_amount(aid)
+                    if real_amount is None:
+                        real_amount = estimate_amount(title, n.get("purchaseMethod", "其他"))
+                        amount_source = "估算"
+                    else:
+                        amount_source = "政采网"
 
-                # 优先用详情API的项目名
                 final_name = proj_name if proj_name else extract_project_name(title)
 
                 all_projects.append({
@@ -462,18 +653,23 @@ def fetch_all():
                     "title": title,
                     "source": "浙江政采网",
                 })
-            time.sleep(0.15)
+            time.sleep(random.uniform(*LIST_SLEEP))
 
-    # 统计金额来源
     real_cnt = sum(1 for p in all_projects if p.get("amount_source") == "政采网")
     est_cnt = len(all_projects) - real_cnt
     log(f"抓取完成: 去重后 {len(seen_ids)} 条公告, 通信类 {len(all_projects)} 条")
     log(f"  真实金额: {real_cnt}条, 估算金额: {est_cnt}条")
+    write_status(
+        running=True, phase="import", progress=95,
+        message=f"抓取完成 {len(all_projects)} 条，准备导入",
+        fetched=len(all_projects),
+    )
     return all_projects
 
 
 def import_to_db(projects, full_rebuild=False):
-    """增量导入数据库"""
+    """增量导入数据库；全量重建会清空后再写入。"""
+    ensure_schema()
     conn = sqlite3.connect(DB_PATH)
     if full_rebuild:
         conn.execute("DELETE FROM bid_projects")
@@ -502,31 +698,129 @@ def import_to_db(projects, full_rebuild=False):
 
     conn.commit()
     total = conn.execute("SELECT COUNT(*) FROM bid_projects").fetchone()[0]
+    real_n = conn.execute(
+        "SELECT COUNT(*) FROM bid_projects WHERE owner_user_id=?", ("real",)
+    ).fetchone()[0]
     conn.close()
-    log(f"导入完成: 新增 {inserted} 条, 数据库总计 {total} 条")
-    return inserted
+    log(f"导入完成: 新增 {inserted} 条, 数据库总计 {total} 条 (real={real_n})")
+    return {"inserted": inserted, "total": total, "real_count": real_n}
 
 
-def main():
-    full_rebuild = "--full-rebuild" in sys.argv
-    fetch_only = "--fetch-only" in sys.argv
-
+def run_fetch(full_rebuild=False, fetch_only=False, max_districts=None, skip_detail=False):
+    """可编程入口：供 scripts/refresh_real_bids.py 与 Web API 调用。"""
+    started = datetime.datetime.now().isoformat(timespec="seconds")
+    write_status(
+        running=True, phase="start", ok=None, progress=0,
+        message="开始抓取浙江政采网…", started_at=started, error=None,
+    )
+    write_meta(last_attempt=started)
     log("=" * 50)
-    log(f"浙江政采网数据抓取 (full_rebuild={full_rebuild}, fetch_only={fetch_only})")
+    log(
+        f"浙江政采网数据抓取 (full_rebuild={full_rebuild}, fetch_only={fetch_only}, "
+        f"max_districts={max_districts}, skip_detail={skip_detail})"
+    )
     log("=" * 50)
 
-    projects = fetch_all()
+    try:
+        projects = fetch_all(max_districts=max_districts, skip_detail=skip_detail)
+        os.makedirs(os.path.dirname(JSON_PATH), exist_ok=True)
+        with open(JSON_PATH, "w", encoding="utf-8") as f:
+            json.dump(projects, f, ensure_ascii=False, indent=2)
+        log(f"已保存到 {JSON_PATH}")
 
-    # 保存 JSON 备份
-    with open(JSON_PATH, "w", encoding="utf-8") as f:
-        json.dump(projects, f, ensure_ascii=False, indent=2)
-    log(f"已保存到 {JSON_PATH}")
+        import_info = {"inserted": 0, "total": 0, "real_count": 0}
+        if not fetch_only:
+            if not projects and not full_rebuild:
+                stats = db_stats()
+                msg = (
+                    f"本次未抓到新数据；保留库内已有 {stats.get('row_count', 0)} 条"
+                    f"（real={stats.get('real_count', 0)}）"
+                )
+                log(msg)
+                write_meta(
+                    last_refresh=started,
+                    last_ok=False,
+                    last_error="站点无数据或不可达",
+                    last_fetched=0,
+                    **{k: stats.get(k) for k in ("row_count", "real_count", "demo_count")},
+                )
+                write_status(
+                    running=False, phase="done", ok=False, progress=100,
+                    message=msg, finished_at=datetime.datetime.now().isoformat(timespec="seconds"),
+                    row_count=stats.get("row_count"), real_count=stats.get("real_count"),
+                )
+                return {
+                    "ok": False,
+                    "error": "站点无数据或不可达",
+                    "fetched": 0,
+                    **stats,
+                }
+            import_info = import_to_db(projects, full_rebuild)
 
-    if not fetch_only:
-        import_to_db(projects, full_rebuild)
+        finished = datetime.datetime.now().isoformat(timespec="seconds")
+        stats = db_stats()
+        write_meta(
+            last_refresh=finished,
+            last_ok=True,
+            last_error=None,
+            last_fetched=len(projects),
+            last_inserted=import_info.get("inserted", 0),
+            row_count=stats.get("row_count"),
+            real_count=stats.get("real_count"),
+            demo_count=stats.get("demo_count"),
+        )
+        write_status(
+            running=False, phase="done", ok=True, progress=100,
+            message=f"完成：抓取 {len(projects)}，新增 {import_info.get('inserted', 0)}，库内 {stats.get('row_count')}",
+            finished_at=finished,
+            fetched=len(projects),
+            inserted=import_info.get("inserted", 0),
+            row_count=stats.get("row_count"),
+            real_count=stats.get("real_count"),
+        )
+        log("完成!")
+        return {
+            "ok": True,
+            "fetched": len(projects),
+            "inserted": import_info.get("inserted", 0),
+            **stats,
+        }
+    except Exception as ex:
+        log(f"[FATAL] {ex}")
+        stats = db_stats()
+        write_meta(
+            last_refresh=datetime.datetime.now().isoformat(timespec="seconds"),
+            last_ok=False,
+            last_error=str(ex),
+            **{k: stats.get(k) for k in ("row_count", "real_count", "demo_count")},
+        )
+        write_status(
+            running=False, phase="failed", ok=False, progress=100,
+            message=str(ex), error=str(ex),
+            finished_at=datetime.datetime.now().isoformat(timespec="seconds"),
+            row_count=stats.get("row_count"), real_count=stats.get("real_count"),
+        )
+        return {"ok": False, "error": str(ex), **stats}
 
-    log("完成!")
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="浙江政采网 · 通信/信息化标讯抓取")
+    parser.add_argument("--full-rebuild", action="store_true", help="清空后全量重建")
+    parser.add_argument("--fetch-only", action="store_true", help="仅抓取写 JSON，不导入 DB")
+    parser.add_argument("--max-districts", type=int, default=0, help="限制区县数（冒烟/快速）")
+    parser.add_argument("--skip-detail", action="store_true", help="跳过详情金额 API，加快抓取")
+    parser.add_argument("--quick", action="store_true", help="等价于 --max-districts 12 --skip-detail")
+    args = parser.parse_args(argv)
+    max_d = args.max_districts or (12 if args.quick else None)
+    skip = args.skip_detail or args.quick
+    return run_fetch(
+        full_rebuild=args.full_rebuild,
+        fetch_only=args.fetch_only,
+        max_districts=max_d,
+        skip_detail=skip,
+    )
 
 
 if __name__ == "__main__":
-    main()
+    result = main()
+    sys.exit(0 if result.get("ok") else 1)

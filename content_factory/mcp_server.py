@@ -2,16 +2,17 @@
 """
 模块2：MCP Stdio 标准封装
 标准 stdio JSON-RPC MCP 协议，可供 OpenCode / OpenClaw / Hermes-WebUI / TeleAgent 调用
-对外暴露 9 个工具：
+对外暴露工具（选题/成稿/质检/公众号草稿/回流/向量/PDF/队列等）：
   1. collect_topics        采集并生成候选选题
   2. generate_article      根据指定选题生成完整文稿
   3. quality_check         执行稿件质量校验
-  4. analysis_topic_data   历史选题数据分析
-  5. export_knowledge_doc  导出结构化知识库文档
-  6. sync_vector_store     文档向量化入库
-  7. run_scheduled_task    手动触发定时任务
-  8. export_article_pdf    将 Markdown 文章导出 PDF
-  9. task_queue_control    任务队列管理
+  4. publish_wechat_draft  推送到微信公众号草稿箱
+  5. analysis_topic_data   历史选题数据分析
+  6. export_knowledge_doc  导出结构化知识库文档
+  7. sync_vector_store     文档向量化入库
+  8. run_scheduled_task    手动触发定时任务
+  9. export_article_pdf    将 Markdown 文章导出 PDF
+ 10. task_queue_control    任务队列管理
 配置文件：mcp.json
 """
 import sys
@@ -46,6 +47,8 @@ TOOLS = [
         "topic": {"type": "string"}, "summary": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}},
         "required": ["topic"]}},
     {"name": "quality_check", "description": "执行稿件质量校验（篇幅/代码/链接/空段落）",
+     "inputSchema": {"type": "object", "properties": {"article_id": {"type": "string"}}, "required": ["article_id"]}},
+    {"name": "publish_wechat_draft", "description": "将稿件推送到微信公众号草稿箱（draft-first；未配置凭证返回明确 skipped）",
      "inputSchema": {"type": "object", "properties": {"article_id": {"type": "string"}}, "required": ["article_id"]}},
     {"name": "analysis_topic_data", "description": "历史选题数据分析，联动 NL2SQL 查投标历史反向优化选题",
      "inputSchema": {"type": "object", "properties": {}}},
@@ -84,6 +87,8 @@ def call_tool(name: str, params: dict):
         return agents.generate_article(params["topic"], params.get("summary", ""), params.get("tags"))
     if name == "quality_check":
         return quality_gate.run_quality_check(article_id=params["article_id"])
+    if name == "publish_wechat_draft":
+        return quality_gate.publish_to_wechat_draft(params["article_id"])
     if name == "analysis_topic_data":
         return data_feedback.analyze_topic_data_with_nl2sql()
     if name == "export_knowledge_doc":

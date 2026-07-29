@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>成军台 · 答辩 Deck（15 页）</title>
+<style>
+:root{--ink:#0f1c2e;--teal:#0d9488;--sand:#e8f0ee;--muted:#64748b}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#0b1220;color:var(--ink)}
+.deck{height:100vh;overflow:hidden}
+.slide{display:none;height:100vh;padding:6vh 8vw;background:linear-gradient(145deg,#f3faf8 0%,#eef2f7 50%,#e8eef5 100%);flex-direction:column;justify-content:center}
+.slide.on{display:flex}
+.slide h1{font-size:clamp(28px,4.5vw,48px);margin-bottom:16px;color:var(--ink)}
+.slide h2{font-size:clamp(22px,3vw,32px);color:var(--teal);margin-bottom:20px}
+.slide p,.slide li{font-size:clamp(16px,2vw,22px);line-height:1.55;color:#334155}
+.slide ul{margin:12px 0 0 1.2em}
+.tagline{font-size:18px;color:var(--muted);margin-top:8px}
+.notes{margin-top:28px;padding:14px 16px;background:rgba(13,148,136,.08);border-left:4px solid var(--teal);font-size:14px;color:#0f766e;max-width:760px}
+.footer{position:fixed;bottom:16px;right:24px;color:#94a3b8;font-size:13px;z-index:2}
+.hint{position:fixed;bottom:16px;left:24px;color:#64748b;font-size:12px;z-index:2}
+table{border-collapse:collapse;margin-top:12px;font-size:15px}
+td,th{border:1px solid #cbd5e1;padding:8px 12px;text-align:left}
+pre{background:#0f1c2e;color:#a7f3d0;padding:14px;border-radius:10px;font-size:13px;overflow:auto;margin-top:12px}
+.cover .brand{font-size:14px;letter-spacing:.12em;color:var(--teal);text-transform:uppercase}
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+<section class="slide on cover" data-i="1">
+  <div class="brand">息壤杯 · 惠民 · AI+自选</div>
+  <h1>成军台</h1>
+  <p class="tagline">息壤育智 · 一人成军</p>
+  <p class="tagline">电信员工 · OPC 作战台 · 内容 + 标书 + 真政采</p>
+  <div class="notes">口播：让一个人也能成军——可验收小队 + 政企落地。</div>
+</section>
+<section class="slide" data-i="2">
+  <h2>痛点</h2>
+  <ul>
+    <li>一人公司：活是一支团队的量</li>
+    <li>Chat 套壳：不可验收、无协作、无周报</li>
+    <li>政企：内容生产与标书情报割裂</li>
+  </ul>
+  <div class="notes">口播：缺的是操作系统，不是又一个对话框。</div>
+</section>
+<section class="slide" data-i="3">
+  <h2>一句话方案</h2>
+  <ul>
+    <li>目标驱动战役 + AI 员工矩阵 + 可导出 Word</li>
+    <li>增量：内容工厂 · 标书 · 真政采问数</li>
+    <li>赛道：惠民 · AI+自选 · 底座息壤 / 星辰</li>
+  </ul>
+</section>
+<section class="slide" data-i="4">
+  <h2>评委 60 秒路径</h2>
+  <ul>
+    <li>「评委 60 秒体验」大按钮</li>
+    <li>样例战役 → 产物抽屉</li>
+    <li>① 导出 Word → ② 智能问数一表</li>
+  </ul>
+  <div class="notes">实拍对齐 DEMO_VIDEO_SCRIPT §A。口播：零讲解可走通。</div>
+</section>
+<section class="slide" data-i="5">
+  <h2>成军看板</h2>
+  <p>目标 → 模板 → 任务树 → 人审 → 执行</p>
+  <div class="notes">人审卡点，避免全自动幻觉交付。</div>
+</section>
+<section class="slide" data-i="6">
+  <h2>AI 员工矩阵</h2>
+  <table>
+    <tr><th>角色</th><th>职责</th></tr>
+    <tr><td>调研官</td><td>渠道 / 竞品</td></tr>
+    <tr><td>内容官</td><td>种草与话术</td></tr>
+    <tr><td>数据参谋</td><td>NL2SQL 问数</td></tr>
+    <tr><td>运营官</td><td>跟进表与节奏</td></tr>
+    <tr><td>复盘官</td><td>周报结构</td></tr>
+  </table>
+</section>
+<section class="slide" data-i="7">
+  <h2>息壤 / 星辰双轨</h2>
+  <ul>
+    <li>Primary：主办方星辰 / 息壤 Token（审批中如实说）</li>
+    <li>Interim：SenseNova / 百炼 / TokenPlan</li>
+    <li>无 Key：橙色横幅 + 明确报错</li>
+  </ul>
+</section>
+<section class="slide" data-i="8">
+  <h2>技术架构</h2>
+  <pre>目标 → 司令 Agent → 战役状态机
+        → 多 Agent → 产物 / Word / 工厂 / 标书
+        → 息壤 LLM · NL2SQL · 标讯库（一键成军）</pre>
+</section>
+<section class="slide" data-i="9">
+  <h2>标准战役 · AI 获客跟进</h2>
+  <p>渠道 · 话术 · 跟进表 · 复盘 → 一键 Word</p>
+  <div class="notes">插入 CMP_DEMO_WEEK_LEAD 实拍。</div>
+</section>
+<section class="slide" data-i="10">
+  <h2>第二战役 · 政企桥接</h2>
+  <ul>
+    <li>行业综述模板证明通用 OS</li>
+    <li>真实标讯 → 一键获客/综述战役</li>
+    <li>问数：真库或标注离线样例表</li>
+  </ul>
+</section>
+<section class="slide" data-i="11">
+  <h2>商业模式</h2>
+  <ul>
+    <li>客户：超级个体 / 一人公司 / 政企内容售前</li>
+    <li>收入：席位 + Token + 政企增值</li>
+    <li>壁垒：模板库 + 人审流 + 电信云亲和</li>
+  </ul>
+</section>
+<section class="slide" data-i="12">
+  <h2>社会价值 · 惠民</h2>
+  <p>降低创业数字化门槛：调得起 AI 员工，看得见交付。</p>
+</section>
+<section class="slide" data-i="13">
+  <h2>天翼云部署</h2>
+  <ul>
+    <li>试用 ECS → Nginx → HTTPS（审批开通中）</li>
+    <li>改密 · 关 mock · 密钥仅环境变量</li>
+  </ul>
+</section>
+<section class="slide" data-i="14">
+  <h2>五维对位 + 规划</h2>
+  <table>
+    <tr><th>维度</th><th>成军台证据</th></tr>
+    <tr><td>创新性</td><td>一人成军 OS · 可验收小队</td></tr>
+    <tr><td>实用性</td><td>60s Word + 标讯一键成军</td></tr>
+    <tr><td>完整性</td><td>样例周包 · 工厂 · 问数 · 文档</td></tr>
+    <tr><td>技术实现</td><td>多 Agent · 状态机 · NL2SQL · 双轨 LLM</td></tr>
+    <tr><td>商业/社会价值</td><td>席位+Token · 惠民 · 电信政企</td></tr>
+  </table>
+  <div class="notes">权重以官网为准。近：Token+公网；中：模板/证据矩阵；远：行业包。</div>
+</section>
+<section class="slide" data-i="15">
+  <h1>谢谢</h1>
+  <p class="tagline">成军台 · 一人成军 · 欢迎点评委 60 秒体验自走</p>
+  <div class="notes">Demo URL / 仓库当面提供；勿在公开页印生产密码。</div>
+</section>
+</div>
+<div class="hint">← → 或空格翻页 · Esc 回封面</div>
+<div class="footer" id="pg">1 / 15</div>
+<script>
+const slides=[...document.querySelectorAll('.slide')];
+let i=0;
+function show(n){
+  i=(n+slides.length)%slides.length;
+  slides.forEach((s,k)=>s.classList.toggle('on',k===i));
+  document.getElementById('pg').textContent=(i+1)+' / '+slides.length;
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown') show(i+1);
+  if(e.key==='ArrowLeft'||e.key==='PageUp') show(i-1);
+  if(e.key==='Home'||e.key==='Escape') show(0);
+  if(e.key==='End') show(slides.length-1);
+});
+document.body.addEventListener('click',e=>{
+  if(e.target.closest('a,button,input,textarea,select')) return;
+  show(i+1);
+});
+</script>
+</body>
+</html>

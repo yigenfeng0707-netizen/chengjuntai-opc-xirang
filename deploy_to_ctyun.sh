@@ -246,18 +246,37 @@ llm:
   enabled: true
   temperature: 0.7
   max_tokens: 8192
-  enable_thinking: true
+  enable_thinking: false
+  require_real_llm: true
   providers:
-    - name: "primary-商汤SenseNova"
+    # Path B: 主办方星辰/息壤 Token 到手后注入（或设环境变量 XIRANG_API_KEY）
+    - name: "primary-天翼云息壤-星辰TokenHub"
+      api_base: "https://wishub-x1.ctyun.cn/v1"
+      api_key: "YOUR_XIRANG_OR_TOKENHUB_API_KEY"
+      api_key_env: "XIRANG_API_KEY"
+      model: "DeepSeek-V3"
+      enabled: true
+      timeout: 90
+    - name: "secondary-星辰TokenHub"
+      api_base: "https://api.teleai.com.cn/v1"
+      api_key: "YOUR_TOKENHUB_API_KEY"
+      api_key_env: "TOKENHUB_API_KEY"
+      model: "TeleChat2-35B"
+      enabled: true
+      timeout: 90
+    # Interim: 等竞赛 Token 期间可用
+    - name: "fallback-商汤SenseNova"
       api_base: "https://token.sensenova.cn/v1"
       api_key: "YOUR_SENSENOVA_API_KEY"
+      api_key_env: "SENSENOVA_API_KEY"
       model: "sensenova-6.7-flash-lite"
       enabled: true
       timeout: 60
     - name: "fallback-阿里云百炼"
       api_base: "https://dashscope.aliyuncs.com/compatible-mode/v1"
       api_key: "YOUR_ALIYUN_API_KEY"
-      model: "qwen3.7-max"
+      api_key_env: "DASHSCOPE_API_KEY"
+      model: "qwen-plus"
       enabled: true
       timeout: 90
 
@@ -279,7 +298,8 @@ chown $SERVICE_USER:$SERVICE_USER "$CONFIG_FILE"
 chmod 600 "$CONFIG_FILE"
 
 info "生产配置已生成: config.yaml"
-warn "LLM API Key 尚未配置，请编辑 config.yaml 填入真实 Key"
+warn "LLM API Key 尚未配置：优先等主办方息壤/星辰 Token；interim 可用 SenseNova/百炼；全无也可先结构 Demo"
+warn "请编辑 config.yaml 或注入环境变量（勿 commit 真实 Key）"
 
 # 保存凭据到安全文件
 CRED_FILE="$APP_DIR/CREDENTIALS.txt"
@@ -612,10 +632,11 @@ cat << SUMMARY
 ║    手动抓取:  $PYTHON $APP_DIR/fetch_real_data.py --full-rebuild
 ║
 ║  下一步:
-║    1. 编辑 config.yaml 填入真实 LLM API Key
+║    1. LLM: 优先 XIRANG_API_KEY（主办方星辰/息壤）；interim 可用 SenseNova/百炼
+║       无 Key 也可先公网结构 Demo（看板无 Key 横幅）。详见 docs/CTYUN_TRIAL.md
 ║    2. 天翼云控制台 → 安全组 → 放行 TCP 80/443/22
 ║    3. 浏览器访问 http://$PUBLIC_IP/ 验证
-║    4. 记录凭据后删除 CREDENTIALS.txt
+║    4. 记录凭据后删除 CREDENTIALS.txt（勿把 Key/密码提交 Git）
 ║
 ╚══════════════════════════════════════════════════════════╝
 

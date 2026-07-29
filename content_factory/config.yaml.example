@@ -1,75 +1,126 @@
-# ========== 内容工厂统一配置文件（模板）==========
-# 复制本文件为 config.yaml，填入真实密钥后使用
+# ========== 成军台 · 统一配置模板 ==========
+# 复制为 config.yaml 后填入真实密钥，或通过环境变量注入（推荐，勿 commit config.yaml）：
+#   XIRANG_API_KEY / TOKENHUB_API_KEY          ← 参赛正式（主办方星辰/息壤）
+#   TOKEN_PLAN_API_KEY / SENSENOVA_API_KEY     ← Interim 本地演示（等 Token 期间）
+#   DASHSCOPE_API_KEY                          ← 可选：标准百炼按量（非 Token Plan）
 # cp config.yaml.example config.yaml
+#
+# LLM 级联说明：
+#   · 本地/演示 NOW：优先 interim（Token Plan / SenseNova），见下方 interim 段
+#   · 参赛正式：主办方发放后开启 primary/secondary（息壤/星辰 TokenHub），可关掉 interim
+#   · 全无 Key：看板显式「无可用 LLM」横幅，「发起成军」报错（禁止静默 mock）
+# 双路径说明：docs/CTYUN_TRIAL.md
 
-# ---------- 基础路径 ----------
 project_root: "./content_factory"
 bid_pipeline_root: ""
 knowledge_sync_folder: "${bid_pipeline_root}/knowledge/library"
 vector_sync_path: "${bid_pipeline_root}/vector_db"
 
-# ---------- NL2SQL 智能问数联动 ----------
+product_name: "成军台"
+product_slogan: "息壤育智 · 一人成军"
+contest_track: "惠民产品创新 / AI+自选开放场景"
+
+# 演示账号禁止静默 mock（无真实 LLM 时 API 必须报错）
+demo_mode:
+  allow_mock_llm: false
+  auto_approve_gate: false
+
 nl2sql_mcp_url: "http://127.0.0.1:8765/mcp"
 nl2sql_default_dataset: "bid_projects"
 nl2sql_default_user_id: ""
 
 nl2sql_backend:
   znws_query_url: "http://127.0.0.1:8082/api/v1"
-  api_token: "CHANGE_ME_TO_RANDOM_TOKEN"      # 部署时用 `openssl rand -hex 16` 生成
+  api_token: "CHANGE_ME_TO_RANDOM_TOKEN"
   mcp_host: "127.0.0.1"
   mcp_port: 8765
   cache_ttl: 300
 
-# ---------- 通用 ----------
 auto_path_fix: true
 network_timeout: 15
 max_retry: 3
 retry_interval: 10
 
-# ---------- 邮件告警 ----------
 smtp_server: ""
 smtp_port: 465
 smtp_user: ""
 smtp_password: ""
 mail_receivers: []
 
-# ---------- Web 面板 ----------
-web_host: "127.0.0.1"
+web_host: "0.0.0.0"
 web_port: 8090
 web_username: "admin"
 web_password: "CHANGE_ME_AFTER_DEPLOY"
 
-# ---------- 日志 ----------
 log_roll_days: 30
 
-# ---------- LLM 配置 ----------
 llm:
   enabled: true
   temperature: 0.7
   max_tokens: 8192
-  enable_thinking: true       # 推理模型开启思考过程，提升 SQL 质量
+  enable_thinking: false
+  require_real_llm: true
   providers:
-    - name: "primary-商汤SenseNova"
+    # —— Interim：等竞赛 Token 期间的真实 E2E（本地 demo 可先开）——
+    # 阿里云 Token Plan（OpenAI 兼容；Key 与标准百炼不互通）
+    - name: "interim-阿里云TokenPlan"
+      api_base: "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+      api_key: "YOUR_TOKEN_PLAN_API_KEY"
+      api_key_env: "TOKEN_PLAN_API_KEY"
+      model: "qwen3.7-max"   # Token Plan 可用模型以控制台为准（qwen-plus 可能 404）
+      enabled: true
+      timeout: 90
+    - name: "interim-商汤SenseNova"
       api_base: "https://token.sensenova.cn/v1"
-      api_key: "YOUR_SENSENOVA_API_KEY"       # ← 填入你的商汤 API Key
+      api_key: "YOUR_SENSENOVA_API_KEY"
+      api_key_env: "SENSENOVA_API_KEY"
       model: "sensenova-6.7-flash-lite"
       enabled: true
       timeout: 60
+    # —— Path B：参赛正式 primary（主办方发放后注入；endpoint/model 以主办方文档为准）——
+    # 正式演示前建议：设 XIRANG_API_KEY，将本段 enabled:true，并可把 interim 段 enabled:false
+    - name: "primary-天翼云息壤-星辰TokenHub"
+      api_base: "https://wishub-x1.ctyun.cn/v1"
+      api_key: "YOUR_XIRANG_OR_TOKENHUB_API_KEY"   # 占位；用 XIRANG_API_KEY 覆盖
+      api_key_env: "XIRANG_API_KEY"
+      model: "DeepSeek-V3"
+      enabled: false   # 主办方 Token 到手后改为 true
+      timeout: 90
+    - name: "secondary-星辰TokenHub"
+      api_base: "https://api.teleai.com.cn/v1"
+      api_key: "YOUR_TOKENHUB_API_KEY"
+      api_key_env: "TOKENHUB_API_KEY"
+      model: "TeleChat2-35B"
+      enabled: false
+      timeout: 90
+    # —— 可选：标准阿里云百炼按量（非 Token Plan endpoint）——
     - name: "fallback-阿里云百炼"
       api_base: "https://dashscope.aliyuncs.com/compatible-mode/v1"
-      api_key: "YOUR_ALIYUN_API_KEY"          # ← 填入你的阿里云 DashScope Key
-      model: "qwen3.7-max"
-      enabled: true
+      api_key: "YOUR_ALIYUN_API_KEY"
+      api_key_env: "DASHSCOPE_API_KEY"
+      model: "qwen-plus"
+      enabled: false
       timeout: 90
 
-# ---------- RSS 资讯源 ----------
 rss_sources: []
 
-# ---------- 内容生成参数 ----------
 article:
   target_min_words: 800
   target_max_words: 4000
   require_code_block: true
 
-# ---------- 端口冲突规避 ----------
+# —— 微信公众号草稿箱（可选；draft-first，不自动群发）——
+# 推荐：复制 config.wechat.local.yaml.example → config.wechat.local.yaml（已 gitignore）
+# 或环境变量：WECHAT_APP_ID / WECHAT_APP_SECRET / WECHAT_THUMB_MEDIA_ID
+# 详见 docs/WECHAT_PUBLISH.md — 切勿把 AppSecret 贴到聊天
+wechat:
+  enabled: false
+  app_id: ""
+  app_secret: ""
+  thumb_media_id: ""   # 图文封面永久素材 ID（微信要求）
+  # cover_image: ""    # 或本地图片路径，首次推送时自动上传
+  author: "成军台"
+  content_source_url: ""
+  timeout: 20
+
 reserved_ports: [8082, 8765]

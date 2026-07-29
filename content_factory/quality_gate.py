@@ -3,7 +3,7 @@
 第三层：质量门控 + 发布通道
 1. 自动化规则校验：篇幅、代码完整性、无效链接、空段落筛查
 2. 校验不通过输出整改建议；校验通过自动排版
-3. 预留公众号草稿推送接口，参数统一外部配置
+3. 公众号草稿推送（draft-first；未配置凭证明确 skipped，见 wechat_publisher / docs/WECHAT_PUBLISH.md）
 4. 全流程操作日志持久化 logs/
 """
 import os
@@ -104,9 +104,9 @@ def run_quality_check(article_id: str = None, file_path: str = None) -> dict:
 
 
 def publish_to_wechat_draft(article_id: str) -> dict:
-    """预留公众号草稿推送接口（参数统一外部配置，未配置返回未启用）"""
-    op_logger.log("publish_wechat", f"公众号推送预占位调用[{article_id}]（未配置实际接口，跳过）", level="WARN")
-    return {"status": "skipped", "reason": "公众号接口未配置，已预留"}
+    """推送到微信公众号草稿箱（draft-first；未配置凭证 → 明确 skipped，不伪装成功）。"""
+    import wechat_publisher
+    return wechat_publisher.publish_article_to_draft(article_id)
 
 
 if __name__ == "__main__":

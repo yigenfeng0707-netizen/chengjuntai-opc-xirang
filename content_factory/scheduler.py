@@ -20,7 +20,10 @@ SCHED_LOG = os.path.join(ROOT, "logs", "scheduler.log")
 
 _cron_parse_cache = {}
 _running = False
+_started_at = None
+_thread = None
 _lock = threading.Lock()
+_EMBEDDED = False  # True = Web 进程内嵌线程；False = start_scheduler.bat 独立进程
 
 
 def _log_sched(msg: str, level: str = "INFO"):
@@ -126,13 +129,90 @@ def add_task(task_id: str, name: str, cron: str, action: str, params: dict = Non
     return True
 
 
-def run_loop():
-    """定时调度主循环（每 30 秒检查一次）"""
+def is_running() -> bool:
+    with _lock:
+        return bool(_running)
+
+
+def status() -> dict:
+    """供 UI / health：调度器是否在跑、嵌入还是独立进程。"""
+    with _lock:
+        running = bool(_running)
+        started = _started_at
+        embedded = _EMBEDDED
+        thread_alive = bool(_thread and _thread.is_alive())
+    cfg = load_schedule()
+    tasks = cfg.get("tasks") or []
+    enabled = sum(1 for t in tasks if t.get("enabled", True))
+    return {
+        "running": running or thread_alive,
+        "embedded": embedded,
+        "started_at": started,
+        "task_count": len(tasks),
+        "enabled_count": enabled,
+        "hint": (
+            "调度器运行中（Web 内嵌线程）" if (running or thread_alive) and embedded
+            else "调度器运行中" if (running or thread_alive)
+            else "未启动 — 可点「启动调度器」或运行 content_factory/start_scheduler.bat"
+        ),
+        "start_script": "content_factory/start_scheduler.bat",
+    }
+
+
+def start_background(embedded: bool = True) -> dict:
+    """轻量后台线程跑 tick 循环（Windows 友好，不做系统 cron）。"""
+    global _running, _started_at, _thread, _EMBEDDED
+    with _lock:
+        if _running or (_thread and _thread.is_alive()):
+            return {"ok": True, "already": True, **status()}
+        _EMBEDDED = bool(embedded)
+        _started_at = datetime.datetime.now().isoformat(timespec="seconds")
+
+        def _worker():
+            global _running
+            with _lock:
+                _running = True
+            _log_sched("定时调度服务启动（background thread）")
+            try:
+                while True:
+                    with _lock:
+                        if not _running:
+                            break
+                    try:
+                        tick()
+                    except Exception as ex:
+                        _log_sched(f"调度tick异常: {ex}", level="ERROR")
+                    time.sleep(30)
+            finally:
+                with _lock:
+                    _running = False
+                _log_sched("定时调度服务已停止")
+
+        t = threading.Thread(target=_worker, name="chengjuntai-scheduler", daemon=True)
+        _thread = t
+        t.start()
+    return {"ok": True, "already": False, **status()}
+
+
+def stop_background() -> dict:
+    """仅停止本进程内嵌线程；独立 bat 进程请自行关闭窗口。"""
     global _running
+    with _lock:
+        if not _EMBEDDED:
+            return {"ok": False, "error": "当前非内嵌线程，请关闭 start_scheduler.bat 窗口", **status()}
+        _running = False
+    return {"ok": True, **status()}
+
+
+def run_loop():
+    """定时调度主循环（每 30 秒检查一次）— 供独立进程 / bat 调用。"""
+    global _running, _started_at, _EMBEDDED
     with _lock:
         if _running:
             return
         _running = True
+        _EMBEDDED = False
+        _started_at = datetime.datetime.now().isoformat(timespec="seconds")
     _log_sched("定时调度服务启动")
     try:
         while True:
@@ -142,4 +222,10 @@ def run_loop():
                 _log_sched(f"调度tick异常: {ex}", level="ERROR")
             time.sleep(30)
     finally:
-        _running = False
+        with _lock:
+            _running = False
+
+
+if __name__ == "__main__":
+    os.makedirs(os.path.dirname(SCHED_LOG), exist_ok=True)
+    run_loop()

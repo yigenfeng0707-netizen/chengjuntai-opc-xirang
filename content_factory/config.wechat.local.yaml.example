@@ -1,0 +1,18 @@
+# 微信公众号草稿推送（本地凭证，勿提交）
+# 复制本文件为 config.wechat.local.yaml 后自行填写。
+# 切勿把 AppSecret 粘贴到聊天 / Issue / 截图。
+
+app_id: "YOUR_WECHAT_APP_ID"
+app_secret: "YOUR_WECHAT_APP_SECRET"
+
+# 图文草稿必填：永久素材封面 media_id（公众平台素材库上传后复制）
+# 或改用下方 cover_image 让成军台自动上传永久图片素材
+thumb_media_id: ""
+
+# 可选：本地封面图路径（jpg/png），在 thumb_media_id 为空时自动 material/add_material
+# cover_image: "D:/path/to/cover.jpg"
+
+author: "成军台"
+content_source_url: ""
+timeout: 20
+enabled: true

@@ -1,6 +1,9 @@
 # ========== 敏感文件（含密钥/密码，禁止提交）==========
 content_factory/config.yaml
+content_factory/config.wechat.local.yaml
+content_factory/config.wechat.local.yml
 content_factory/users.json
+docs/ADMIN_ACCESS.local.md
 CREDENTIALS.txt
 *.env
 .env
@@ -38,6 +41,7 @@ env/
 
 # ========== 归档 ==========
 archive/
+backups/
 
 # ========== IDE ==========
 .vscode/
@@ -49,9 +53,21 @@ Thumbs.db
 .DS_Store
 desktop.ini
 
-# ========== 抓取的中间数据 ==========
+# ========== 运行时数据 ==========
 content_factory/data/bid_insights_cache.json
 content_factory/data/feedback.json
 content_factory/data/topics.json
+content_factory/data/campaigns/
+content_factory/data/campaign_metrics.json
+content_factory/data/user_events.jsonl
+content_factory/data/task_queue.json
+content_factory/data/bid_workspace/
 content_factory/vector_db/
 content_factory/export_pdf/
+content_factory/export_docx/
+content_factory/schedule_config.json
+
+# ========== 本地密钥副本 ==========
+**/secrets/
+CREDENTIALS.txt
+

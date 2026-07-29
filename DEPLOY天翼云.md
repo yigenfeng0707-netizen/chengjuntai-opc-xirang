@@ -1,17 +1,10 @@
----
-AIGC:
-  ContentProducer: '001191110102MAD55U9H0F10002'
-  ContentPropagator: '001191110102MAD55U9H0F10002'
-  Label: '1'
-  ProduceID: '89b00b92-9fb9-4892-b4b9-b462f38e2ee6'
-  PropagateID: '89b00b92-9fb9-4892-b4b9-b462f38e2ee6'
-  ReservedCode1: 'a58481d2-1328-4705-a9f3-59bdd46f5bbd'
-  ReservedCode2: 'a58481d2-1328-4705-a9f3-59bdd46f5bbd'
----
+# 天翼云 ECS 部署手册 — 成军台（OPC OS on 息壤）/ NL2SQL TeleAgent + AI 内容工厂
 
-# 天翼云 ECS 部署手册 — NL2SQL TeleAgent + AI 内容工厂（公测版）
-
-> 版本: 1.0 | 更新: 2026-07-27 | 适用: 天翼云 ECS (Ubuntu 22.04 / CentOS 8+)
+> 版本: 1.2 | 更新: 2026-07-29 | 适用: 天翼云 ECS (Ubuntu 22.04 / CentOS 8+)
+> 产品升级：本仓库已升维为「成军台」参赛交付版，Web 默认入口为成军看板（端口 8090）。
+>
+> **参赛双路径**：可先用 **ECS 免费试用** 部署公网 Demo（不必等星辰 Token）；主办方发放息壤/星辰 Key 后再切 primary LLM。  
+> 精简清单与话术 → [`docs/CTYUN_TRIAL.md`](./docs/CTYUN_TRIAL.md)
 
 ---
 
@@ -50,9 +43,12 @@ AIGC:
 
 ## 2. 前置条件
 
-- 天翼云账号（已完成企业实名认证）
-- 本地项目目录 `D:\nl2sql_teleagent_prod\` 文件完整
-- 至少一个可用的 LLM API Key（商汤 SenseNova 或阿里云百炼）
+- 天翼云账号（可先走 **免费试用**；企业实名按控制台要求）
+- 本地项目目录完整（本仓库 `chengjuntai/`，或历史路径 `nl2sql_teleagent_prod/`）
+- **LLM Key（可延后）**：
+  - **正式 primary**：星辰 TokenHub / 息壤 Key（常由主办方发放；未到手也可先部署结构 Demo）
+  - **Interim 真实 E2E（可选）**：商汤 SenseNova 或阿里云百炼
+  - **全无 Key**：公网仍可上线看板 + 显式无 Key 横幅（禁止静默 mock）
 - SSH 客户端（Windows 自带 OpenSSH 或 PuTTY）
 - SCP/WinSCP 文件传输工具
 
@@ -182,46 +178,55 @@ sudo bash deploy_to_ctyun.sh
 
 ## 7. 配置 LLM API Key
 
-部署脚本生成的 `config.yaml` 中 LLM API Key 为占位符，需要手动填入。
+部署脚本生成的 `config.yaml` 中 LLM API Key 为占位符。  
+**推荐顺序**：主办方息壤/星辰（Path B）→ interim SenseNova/百炼 → 全无则保持占位 + 看板无 Key 横幅。
+
+也可用环境变量（优先，避免把 Key 写进文件）：`XIRANG_API_KEY` / `TOKENHUB_API_KEY` / `SENSENOVA_API_KEY` / `DASHSCOPE_API_KEY`。  
+完整模板见仓库 `content_factory/config.yaml.example`；双路径说明见 `docs/CTYUN_TRIAL.md`。
 
 ```bash
 nano /opt/nl2sql_teleagent_prod/content_factory/config.yaml
+# 或本仓库路径：
+# nano /opt/chengjuntai/content_factory/config.yaml
 ```
 
-找到 `llm.providers` 部分，替换：
+找到 `llm.providers` 部分，按需替换：
 
-### 方案 A：商汤 SenseNova（推荐，标准 API 无合规风险）
+### 方案 A：天翼云息壤 / 星辰 TokenHub（参赛 primary · 主办方 Token 到手后）
 
 ```yaml
-    - name: "primary-商汤SenseNova"
+    - name: "primary-天翼云息壤-星辰TokenHub"
+      api_base: "https://wishub-x1.ctyun.cn/v1"   # 以主办方/控制台实际地址为准
+      api_key: "主办方发放的Key"                 # 或留占位，改用环境变量 XIRANG_API_KEY
+      api_key_env: "XIRANG_API_KEY"
+      model: "DeepSeek-V3"                       # 以主办方可用模型为准
+      enabled: true
+      timeout: 90
+```
+
+> 息壤相关产品页：https://www.ctyun.cn/products/xisiang  
+> 优势：赛事主链路、模型徽章可展示息壤/星辰，符合预赛叙事。
+
+### 方案 B：商汤 SenseNova（Interim 真实 E2E · 等 Token 期间）
+
+```yaml
+    - name: "fallback-商汤SenseNova"
       api_base: "https://token.sensenova.cn/v1"
-      api_key: "sk-你的真实Key"        # ← 替换这里
+      api_key: "sk-你的真实Key"        # ← 替换这里；或 SENSENOVA_API_KEY
+      api_key_env: "SENSENOVA_API_KEY"
       model: "sensenova-6.7-flash-lite"
       enabled: true
       timeout: 60
 ```
 
-### 方案 B：天翼云息壤（企业级，推荐生产环境）
-
-```yaml
-    - name: "primary-天翼云息壤"
-      api_base: "https://api.ctyun.cn/aiproapi/v1"   # 确认实际地址
-      api_key: "你的天翼云APIKey"
-      model: "qwen3.5"       # 或 DeepSeek-V4 / GLM-5.1
-      enabled: true
-      timeout: 90
-```
-
-> 天翼云息壤模型广场：https://www.ctyun.cn/products/xisiang
-> 优势：企业自有账号，无个人 API 合规风险，内网调用延迟低。
-
-### 方案 C：阿里云百炼 DashScope（个人版兜底）
+### 方案 C：阿里云百炼 DashScope（Interim 兜底）
 
 ```yaml
     - name: "fallback-阿里云百炼"
       api_base: "https://dashscope.aliyuncs.com/compatible-mode/v1"
       api_key: "sk-你的DashScopeKey"
-      model: "qwen3.7-max"
+      api_key_env: "DASHSCOPE_API_KEY"
+      model: "qwen-plus"
       enabled: true
       timeout: 90
 ```

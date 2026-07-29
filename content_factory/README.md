@@ -58,7 +58,7 @@ nl2sql_teleagent_prod/                  ← 仓库根（已含 NL2SQL 智能问�
 ### 四层业务流水线
 1. **选题采集层**：RSS 抓取 → 清洗去重 → LLM 多维打分 → topics.json
 2. **多Agent生成层**：大纲Agent → 写作Agent → 初审校验Agent → articles/
-3. **质量门控层**：篇幅/代码/链接/空段落校验 → 自动排版 → 公众号预留
+3. **质量门控层**：篇幅/代码/链接/空段落校验 → 自动排版 → 公众号草稿推送（见 [docs/WECHAT_PUBLISH.md](../docs/WECHAT_PUBLISH.md)）
 4. **数据回流层**：文章绑定ID/标签 → 外部指标导入 → 联动 NL2SQL 查投标历史 → 反向优化选题
 
 ### 与 NL2SQL 的联动点

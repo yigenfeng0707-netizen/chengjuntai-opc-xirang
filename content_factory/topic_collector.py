@@ -166,14 +166,20 @@ def load_topics():
     return []
 
 
-def mark_topic(topic_id: str, status: str):
-    """人工标记选题 选用/废弃"""
+def mark_topic(topic_id: str, status: str) -> bool:
+    """人工标记选题 选用/废弃。返回是否命中。"""
     topics = load_topics()
+    found = False
     for t in topics:
-        if t["id"] == topic_id:
+        if t.get("id") == topic_id:
             t["status"] = status
+            found = True
+            break
+    if not found:
+        return False
     with open(TOPICS_FILE, "w", encoding="utf-8") as f:
         json.dump(topics, f, ensure_ascii=False, indent=2)
+    return True
 
 
 if __name__ == "__main__":

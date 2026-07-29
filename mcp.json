@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "chengjuntai-campaign": {
+      "command": "python",
+      "args": ["content_factory/mcp_campaign_server.py"],
+      "cwd": "."
+    },
+    "content-factory": {
+      "command": "python",
+      "args": ["content_factory/mcp_server.py"],
+      "cwd": "."
+    }
+  }
+}

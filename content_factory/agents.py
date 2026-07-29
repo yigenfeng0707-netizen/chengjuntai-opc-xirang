@@ -25,8 +25,19 @@ PROMPT_REVIEW = "你是内容审核专家。检查以下文稿：①虚构数据
 
 
 def _call_llm(prompt: str, fallback: str = "") -> str:
-    """调用 LLM（多 provider 级联 fallback 由 llm_client 统一处理）；全部失败返回 fallback"""
-    return llm_client.call_llm(prompt, fallback=fallback)
+    """调用 LLM；require_real_llm=true 且未允许 mock 时禁止静默返回 mock fallback。"""
+    cfg = load_config()
+    llm_cfg = cfg.get("llm", {})
+    allow_mock = bool(cfg.get("demo_mode", {}).get("allow_mock_llm", False))
+    require_real = bool(llm_cfg.get("require_real_llm", False)) and not allow_mock
+    out = llm_client.call_llm(prompt, fallback="" if require_real else fallback)
+    if out:
+        return out
+    if require_real and not llm_client.is_llm_enabled():
+        raise RuntimeError("内容官：无可用 LLM provider（require_real_llm=true）")
+    if require_real:
+        raise RuntimeError("内容官：LLM 调用失败（require_real_llm=true，禁止静默 mock）")
+    return fallback
 
 
 def _mock_outline(topic, summary):
@@ -94,8 +105,9 @@ def review_agent(article: str) -> dict:
 
 
 # ---------- 串行协作主流程 ----------
-def generate_article(topic: str, summary: str = "", tags: list = None, task_id: str = None) -> dict:
-    """三 Agent 串行：大纲→写作→初审，返回稿件信息"""
+def generate_article(topic: str, summary: str = "", tags: list = None, task_id: str = None,
+                     campaign_id: str = None) -> dict:
+    """三 Agent 串行：大纲→写作→初审，返回稿件信息；可选关联战役 ID"""
     op_logger.log("agent_pipeline", f"开始生成文稿[{topic}]", task_id=task_id)
     outline = outline_agent(topic, summary)
     article = write_agent(topic, outline)
@@ -119,18 +131,45 @@ def generate_article(topic: str, summary: str = "", tags: list = None, task_id: 
                 meta_list = json.load(f)
         except Exception:
             meta_list = []
-    meta_list.append({
+    entry = {
         "id": art_id, "title": topic, "file": os.path.basename(md_file),
         "tags": tags or [], "summary": summary_text,
         "review_pass": review.get("pass", False), "review": review,
-        "created_at": datetime.datetime.now().isoformat()
-    })
+        "created_at": datetime.datetime.now().isoformat(),
+    }
+    if campaign_id:
+        entry["campaign_id"] = campaign_id
+    meta_list.append(entry)
     with open(ARTICLES_META, "w", encoding="utf-8") as f:
         json.dump(meta_list, f, ensure_ascii=False, indent=2)
 
     op_logger.log("agent_pipeline", f"文稿生成完成 {art_id}，初审{'通过' if review.get('pass') else '未通过'}", task_id=task_id)
     return {"id": art_id, "title": topic, "file": md_file, "summary": summary_text,
-            "review_pass": review.get("pass", False), "review": review}
+            "review_pass": review.get("pass", False), "review": review,
+            "campaign_id": campaign_id}
+
+
+def link_article_campaign(article_id: str, campaign_id: str) -> dict:
+    """将内容工厂稿件关联到战役（写入 articles_meta.campaign_id）"""
+    if not os.path.exists(ARTICLES_META):
+        raise ValueError("无稿件元数据")
+    with open(ARTICLES_META, "r", encoding="utf-8") as f:
+        meta_list = json.load(f)
+    found = None
+    for a in meta_list:
+        if a.get("id") == article_id:
+            a["campaign_id"] = campaign_id
+            found = a
+            break
+    if not found:
+        raise ValueError(f"稿件不存在: {article_id}")
+    with open(ARTICLES_META, "w", encoding="utf-8") as f:
+        json.dump(meta_list, f, ensure_ascii=False, indent=2)
+    return found
+
+
+def articles_for_campaign(campaign_id: str) -> list:
+    return [a for a in list_articles() if a.get("campaign_id") == campaign_id]
 
 
 def list_articles():

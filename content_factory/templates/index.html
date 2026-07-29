@@ -1,97 +1,1422 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<title>AI 内容工厂 · 管理面板</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>成军台 · 息壤育智 · 一人成军</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:"Microsoft YaHei",sans-serif}
-body{background:#f0f2f5;color:#333;font-size:14px}
-.header{background:#1a1f36;color:#fff;padding:14px 24px;display:flex;justify-content:space-between;align-items:center}
-.header h1{font-size:18px;font-weight:600}
-.header .user{font-size:13px;opacity:.85}
-.layout{display:flex;min-height:calc(100vh - 52px)}
-.sidebar{width:200px;background:#fff;border-right:1px solid #e8e8e8;padding:12px 0}
-.sidebar a{display:block;padding:11px 24px;color:#555;text-decoration:none;border-left:3px solid transparent}
-.sidebar a:hover{background:#f5f7fa}
-.sidebar a.active{color:#2f54eb;border-left-color:#2f54eb;background:#f0f5ff}
-.main{flex:1;padding:20px;overflow:auto}
-.card{background:#fff;border-radius:8px;padding:18px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-.card h2{font-size:15px;margin-bottom:12px;color:#1a1f36;border-left:4px solid #2f54eb;padding-left:8px}
-.btn{display:inline-block;padding:6px 16px;background:#2f54eb;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;margin-right:8px}
-.btn:hover{background:#1d39c4}
-.btn.gray{background:#8c8c8c}
-.btn.sm{padding:4px 10px;font-size:12px}
+:root{
+  --ink:#0f1c2e; --teal:#0d9488; --teal-d:#0f766e; --sand:#f4f1ea; --line:#d6dde6;
+  --ok:#15803d; --warn:#b45309; --err:#b91c1c; --card:#fff; --muted:#64748b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(160deg,#e8f3f1 0%,var(--sand) 45%,#eef2f7 100%);color:var(--ink);min-height:100vh}
+.header{display:flex;justify-content:space-between;align-items:center;padding:16px 28px;background:rgba(15,28,46,.92);color:#fff;backdrop-filter:blur(8px)}
+.brand{display:flex;flex-direction:column;gap:2px}
+.brand h1{font-size:20px;font-weight:700;letter-spacing:.02em}
+.brand span{font-size:12px;opacity:.75}
+.badge{display:inline-flex;align-items:center;gap:6px;background:rgba(13,148,136,.25);border:1px solid rgba(45,212,191,.45);padding:6px 12px;border-radius:999px;font-size:12px}
+.badge .dot{width:8px;height:8px;border-radius:50%;background:#2dd4bf}
+.layout{display:grid;grid-template-columns:200px 1fr;min-height:calc(100vh - 64px)}
+.sidebar{background:rgba(255,255,255,.72);border-right:1px solid var(--line);padding:16px 0}
+.sidebar a{display:block;padding:12px 22px;color:#334155;text-decoration:none;border-left:3px solid transparent;cursor:pointer}
+.sidebar a:hover{background:rgba(13,148,136,.08)}
+.sidebar a.active{color:var(--teal-d);border-left-color:var(--teal);background:rgba(13,148,136,.1);font-weight:600}
+.main{padding:22px;overflow:auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 8px 24px rgba(15,28,46,.04)}
+.card h2{font-size:15px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card h2::before{content:"";width:4px;height:16px;background:var(--teal);border-radius:2px}
+.btn{display:inline-block;padding:8px 16px;background:var(--teal);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;margin-right:8px}
+.btn:hover{background:var(--teal-d)}
+.btn.gray{background:#64748b}
+.btn.ghost{background:transparent;color:var(--teal-d);border:1px solid var(--teal)}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn.danger{background:var(--err)}
 table{width:100%;border-collapse:collapse;margin-top:8px}
-th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #f0f0f0;font-size:13px}
-th{background:#fafafa;color:#666;font-weight:600}
-.tag{display:inline-block;background:#e6f7ff;color:#1890ff;padding:1px 8px;border-radius:10px;font-size:12px;margin-right:4px}
-input,select,textarea{padding:6px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px;width:100%}
-.row{display:flex;gap:12px;margin-bottom:10px}
-.row .col{flex:1}
-.logbox{background:#1a1f36;color:#52c41a;padding:12px;border-radius:6px;font-family:Consolas,monospace;font-size:12px;max-height:380px;overflow:auto;white-space:pre-wrap}
-.status-ok{color:#52c41a}.status-warn{color:#faad14}.status-err{color:#ff4d4f}
-.login{max-width:340px;margin:80px auto;background:#fff;padding:30px;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.12)}
-.login h2{text-align:center;margin-bottom:20px}
-.muted{color:#999;font-size:12px}
-pre.md{white-space:pre-wrap;background:#f9f9f9;padding:12px;border-radius:4px;max-height:400px;overflow:auto;font-size:12px;line-height:1.6}
+th,td{padding:10px;text-align:left;border-bottom:1px solid #eef2f7;font-size:13px;vertical-align:top}
+th{color:var(--muted);font-weight:600;background:#f8fafc}
+.tag{display:inline-block;background:#ccfbf1;color:#0f766e;padding:2px 8px;border-radius:999px;font-size:12px;margin-right:4px}
+input,select,textarea{padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;width:100%;background:#fff}
+textarea{min-height:88px;resize:vertical}
+.row{display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.row .col{flex:1;min-width:180px}
+.muted{color:var(--muted);font-size:12px}
+.status-ok{color:var(--ok)}.status-warn{color:var(--warn)}.status-err{color:var(--err)}
+.banner{padding:12px 14px;border-radius:10px;margin-bottom:14px;font-size:13px;line-height:1.5}
+.banner.warn{background:#fff7ed;border:1px solid #fdba74;color:#9a3412}
+.banner.ok{background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46}
+.login{max-width:380px;margin:10vh auto;background:#fff;padding:32px;border-radius:16px;box-shadow:0 16px 40px rgba(15,28,46,.1)}
+.login h2{text-align:center;margin-bottom:8px}
+.login .sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:20px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.metric{background:linear-gradient(180deg,#f0fdfa,#fff);border:1px solid #99f6e4;border-radius:12px;padding:14px}
+.metric b{display:block;font-size:22px;color:var(--teal-d)}
+.metric span{font-size:12px;color:var(--muted)}
+.kanban{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.col-board{background:#f8fafc;border:1px solid var(--line);border-radius:12px;padding:12px;min-height:160px}
+.col-board h3{font-size:13px;margin-bottom:10px;color:var(--muted)}
+.task{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;font-size:12px}
+.task .role{color:var(--teal-d);font-weight:600}
+.hero-goal{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end}
+.pre{white-space:pre-wrap;background:#0f1c2e;color:#a7f3d0;padding:14px;border-radius:10px;max-height:420px;overflow:auto;font-size:12px;line-height:1.55}
+.logbox{background:#0f1c2e;color:#86efac;padding:12px;border-radius:10px;font-family:Consolas,monospace;font-size:12px;max-height:380px;overflow:auto;white-space:pre-wrap}
+.value-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-bottom:16px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}
+.value-strip .step{padding:14px 16px;border-right:1px solid var(--line);font-size:13px;line-height:1.45}
+.value-strip .step:last-child{border-right:none}
+.value-strip .step b{display:block;color:var(--teal-d);margin-bottom:4px;font-size:12px;letter-spacing:.04em}
+.opc-claim{margin:0 0 14px;padding:16px 18px;border-radius:14px;background:linear-gradient(135deg,#0f172a 0%,#134e4a 70%);color:#ecfdf5}
+.opc-claim h2{margin:0 0 6px;font-size:18px;color:#fff;font-weight:700}
+.opc-claim p{margin:0;font-size:13px;line-height:1.5;color:rgba(236,253,245,.88)}
+.week-story{margin:0 0 14px;padding:12px 14px;border-radius:12px;border:1px solid #99f6e4;background:#f0fdfa;font-size:13px;line-height:1.5;color:#0f766e}
+.week-story b{color:#115e59}
+.art-drawer{border:2px solid var(--teal);border-radius:14px;padding:14px;background:linear-gradient(180deg,#f0fdfa,#fff);margin-bottom:16px}
+.art-drawer h2{margin-bottom:10px}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px;border-bottom:1px solid var(--line);padding-bottom:8px}
+.tabs button{background:transparent;border:1px solid transparent;color:var(--muted);padding:7px 12px;border-radius:8px;cursor:pointer;font-size:12px}
+.tabs button:hover{background:rgba(13,148,136,.08);color:var(--teal-d)}
+.tabs button.active{background:rgba(13,148,136,.12);border-color:#99f6e4;color:var(--teal-d);font-weight:600}
+.q-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin:10px 0 14px}
+.q-card{border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;background:#fff;font-size:12px;line-height:1.4;text-align:left}
+.q-card:hover{border-color:var(--teal);background:#f0fdfa}
+.bar-chart{margin-top:12px}
+.bar-row{display:grid;grid-template-columns:100px 1fr 48px;gap:8px;align-items:center;margin-bottom:6px;font-size:12px}
+.bar-track{background:#e2e8f0;border-radius:999px;height:10px;overflow:hidden}
+.bar-fill{background:linear-gradient(90deg,var(--teal),#2dd4bf);height:100%;border-radius:999px}
+.check-list{list-style:none;margin:8px 0}
+.check-list li{padding:6px 0;border-bottom:1px dashed #e2e8f0;font-size:13px}
+.check-list li::before{content:"☐ ";color:var(--teal-d)}
+.ftab-pane{display:none}.ftab-pane.show{display:block}
+.preview-pane{border:1px solid var(--line);border-radius:10px;padding:12px;background:#f8fafc;margin-top:10px}
+.table-wrap{overflow:auto}
+.btn.judge-cta{width:100%;margin-top:14px;padding:14px 16px;font-size:15px;font-weight:700;background:linear-gradient(135deg,#0d9488,#0f766e);box-shadow:0 8px 20px rgba(13,148,136,.35);letter-spacing:.02em}
+.btn.judge-cta:hover{filter:brightness(1.05)}
+.btn.judge-cta.home{width:auto;margin:0;padding:12px 22px;font-size:14px}
+.judge-guide{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 14px;margin-bottom:14px;border-radius:12px;background:linear-gradient(90deg,#0f766e,#0d9488);color:#fff;box-shadow:0 10px 28px rgba(15,28,46,.18)}
+.judge-guide b{font-size:13px;margin-right:6px}
+.judge-guide .btn{background:#fff;color:#0f766e;border:none;font-weight:600}
+.judge-guide .btn.ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.55)}
+.judge-guide .muted{color:rgba(255,255,255,.85)}
+.toast-host{position:fixed;right:18px;bottom:18px;z-index:80;display:flex;flex-direction:column;gap:8px;max-width:min(420px,92vw);pointer-events:none}
+.toast{pointer-events:auto;padding:12px 14px;border-radius:12px;background:#0f172a;color:#ecfdf5;font-size:13px;line-height:1.45;box-shadow:0 12px 32px rgba(15,28,46,.28);border:1px solid rgba(45,212,191,.35);animation:toastIn .25s ease}
+.toast.warn{background:#7c2d12;border-color:#fdba74;color:#fff7ed}
+.toast .toast-x{float:right;margin-left:10px;cursor:pointer;opacity:.7;border:none;background:transparent;color:inherit;font-size:14px}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.story-rail{margin:0 0 14px;padding:14px 16px;border-radius:14px;border:1px solid #99f6e4;background:linear-gradient(120deg,#f0fdfa,#fff);font-size:13px;line-height:1.5}
+.story-rail b{color:#0f766e}
+.story-rail .muted{margin-top:6px}
+@media(max-width:840px){.layout{grid-template-columns:1fr}.sidebar{display:flex;overflow:auto;border-right:none;border-bottom:1px solid var(--line)}.sidebar a{white-space:nowrap}.hero-goal{grid-template-columns:1fr}.value-strip{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="header">
-  <h1>AI 内容工厂 · 管理面板</h1>
-  <div class="user" id="userBox">未登录</div>
+  <div class="brand">
+    <h1>成军台</h1>
+    <span>息壤育智 · 一人成军｜OPC OS on 息壤</span>
+  </div>
+  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+    <div class="badge" id="modelBadge"><span class="dot"></span><span id="modelText">模型检测中…</span></div>
+    <div class="badge" id="mcpBadge" title="stdio MCP：战役 + 内容工厂（见 README / mcp.json）"><span class="dot"></span><span id="mcpText">MCP…</span></div>
+    <div class="muted" id="userBox" style="color:#cbd5e1">未登录</div>
+  </div>
 </div>
+
 <div class="layout" id="appBox" style="display:none">
   <div class="sidebar">
-    <a class="nav" data-v="dashboard">看板总览</a>
-    <a class="nav" data-v="topics">选题列表</a>
-    <a class="nav" data-v="articles">文稿预览</a>
-    <a class="nav" data-v="pipeline">流水线</a>
-    <a class="nav" data-v="queue">任务队列</a>
-    <a class="nav" data-v="schedule">定时任务</a>
-    <a class="nav" data-v="vector">向量检索</a>
-    <a class="nav" data-v="sync">标书同步</a>
-    <a class="nav" data-v="pdf">PDF导出</a>
+    <a class="nav active" data-v="home">成军看板</a>
+    <a class="nav" data-v="campaigns">战役列表</a>
+    <a class="nav" data-v="artifacts">产物中心</a>
+    <a class="nav" data-v="nl2sql">智能问数</a>
+    <a class="nav" data-v="bid">标书工作台</a>
+    <a class="nav" data-v="metrics">成效指标</a>
+    <a class="nav" data-v="factory">内容工厂</a>
     <a class="nav" data-v="logs">系统日志</a>
-    <a class="nav" data-v="users">用户权限</a>
+    <a class="nav" data-v="users">权限管理</a>
+    <a class="nav admin-only" data-v="insights" style="display:none">用户洞察</a>
   </div>
   <div class="main" id="content"></div>
 </div>
+
+<div id="toastHost" class="toast-host" aria-live="polite"></div>
 <div id="loginBox" class="login">
-  <h2>登录</h2>
-  <div class="row"><div class="col"><input id="lu" placeholder="用户名"></div></div>
-  <div class="row"><div class="col"><input id="lp" type="password" placeholder="密码"></div></div>
-  <button class="btn" style="width:100%" onclick="doLogin()">登录</button>
-  <p class="muted" style="margin-top:12px;text-align:center">首次部署请修改 users.json 中的默认密码</p>
+  <h2>成军台</h2>
+  <p style="margin:-4px 0 10px;text-align:center;font-size:15px;font-weight:600;color:#0f766e;line-height:1.4">缺编辑部的一人公司 · 内容成军闭环</p>
+  <p class="sub" id="loginSub">惠民 · AI+自选开放场景｜支持邮箱登录｜检测模型配置…</p>
+  <div id="loginBanner"></div>
+  <button type="button" class="btn judge-cta" id="loginJudgeCta" onclick="startJudge60sFromLogin()">评委 60 秒体验</button>
+  <p class="muted" style="margin:8px 0 16px;text-align:center;line-height:1.45">零讲解一条路：样例战役 → Word 周报 → 问数一表<br>（只读评委自动登录 · 无需找侧栏）</p>
+  <div id="loginForm">
+    <div class="row"><div class="col"><input id="lu" placeholder="邮箱或用户名" value="" autocomplete="username"></div></div>
+    <div class="row"><div class="col"><input id="lp" type="password" placeholder="密码" value="" autocomplete="current-password"></div></div>
+    <button class="btn" style="width:100%" onclick="doLogin()">进入成军</button>
+    <p class="muted" style="margin-top:12px;text-align:center">还没有账号？<a href="#" onclick="toggleAuthMode('register');return false;">邮箱注册</a></p>
+    <p class="muted" style="margin-top:6px;text-align:center">评委只读：judge / judge2026</p>
+  </div>
+  <div id="registerForm" style="display:none">
+    <div class="row"><div class="col"><input id="re" type="email" placeholder="邮箱" autocomplete="email"></div></div>
+    <div class="row"><div class="col"><input id="rn" placeholder="显示名（可选）"></div></div>
+    <div class="row"><div class="col"><input id="rp" type="password" placeholder="密码（至少6位）" autocomplete="new-password"></div></div>
+    <button class="btn" style="width:100%" onclick="doRegister()">注册并登录</button>
+    <p class="muted" style="margin-top:12px;text-align:center">已有账号？<a href="#" onclick="toggleAuthMode('login');return false;">返回登录</a></p>
+  </div>
 </div>
+
 <script>
-let TOKEN='',ROLE='',USER='';
-async function api(path,opts){opts=opts||{};opts.headers=opts.headers||{};opts.headers['Authorization']='Bearer '+TOKEN;const r=await fetch(path,opts);if(r.status===401){alert('登录失效');location.reload();}return r.json();}
-function doLogin(){const u=document.getElementById('lu').value,p=document.getElementById('lp').value;fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({u,p})}).then(r=>r.json()).then(d=>{if(d.token){TOKEN=d.token;ROLE=d.role;USER=d.user;document.getElementById('loginBox').style.display='none';document.getElementById('appBox').style.display='flex';document.getElementById('userBox').textContent=USER+' ('+ROLE+')';nav('dashboard');}else{alert(d.error||'登录失败');}});}
+let TOKEN='',ROLE='',USER='',EMAIL='', CURRENT=null, _viewSeq=0, _selUser='';
+let _pendingJudge60=false, _judgeGuideOn=false;
+const JUDGE_DEMO_IDS=['CMP_DEMO_WEEK_LEAD','CMP_DEMO_LEAD_01','CMP_DEMO_WEEK_BRIEF','CMP_DEMO_BRIEF_01'];
+const JUDGE_NL_Q='各行业中标项目数量和金额合计';
+const JUDGE_NL_SAMPLE={
+  columns:['行业','项目数','金额合计(万元)'],
+  rows:[['云计算',12,8600],['网络安全',9,4200],['IDC/算力',7,15100],['数字化转型',15,6800],['智慧城市',6,3900]],
+  note:'离线缓存样例表（非实时查询）· 启动 scripts/start_real_data.bat 后可点预设卡查真库'
+};
+function $(id){return document.getElementById(id);}
+function setHTML(id,html){const el=$(id);if(!el){console.warn('setHTML skipped, missing #'+id);return false;}el.innerHTML=html;return true;}
+async function api(path,opts){
+  opts=opts||{};opts.headers=opts.headers||{};
+  if(TOKEN)opts.headers['Authorization']='Bearer '+TOKEN;
+  if(opts.body&&!opts.headers['Content-Type'])opts.headers['Content-Type']='application/json';
+  let r;
+  try{r=await fetch(path,opts);}catch(e){throw new Error('网络请求失败: '+(e&&e.message?e.message:e));}
+  if(r.status===401){alert('登录失效');location.reload();throw new Error('登录失效');}
+  const t=await r.text();
+  let d;try{d=JSON.parse(t);}catch(e){d={error:t};}
+  if(!r.ok){
+    let msg=(d&&(d.detail!=null?d.detail:d.error))||t||('HTTP '+r.status);
+    if(Array.isArray(msg)) msg=msg.map(x=>typeof x==='object'?(x.msg||x.message||JSON.stringify(x)):String(x)).join('; ');
+    throw new Error(String(msg));
+  }
+  return d;
+}
+function asList(x){return Array.isArray(x)?x:[];}
+function toggleAuthMode(mode){
+  const lf=$('loginForm'),rf=$('registerForm');
+  if(!lf||!rf) return;
+  lf.style.display=mode==='register'?'none':'block';
+  rf.style.display=mode==='register'?'block':'none';
+}
+function afterLogin(d){
+  TOKEN=d.token;ROLE=d.role;USER=d.user;EMAIL=d.email||'';
+  const box=$('loginBox'),app=$('appBox'),ub=$('userBox');
+  if(box) box.style.display='none';
+  if(app) app.style.display='grid';
+  if(ub) ub.textContent=(EMAIL||USER)+' · '+ROLE;
+  document.querySelectorAll('.admin-only').forEach(a=>{a.style.display=ROLE==='super_admin'?'block':'none';});
+  refreshBadge();
+  const wantJudge=_pendingJudge60 || (location.hash||'').indexOf('judge60')>=0;
+  _pendingJudge60=false;
+  if(wantJudge){ runJudge60sPath(); }
+  else { nav('home'); }
+}
+function startJudge60sFromLogin(){
+  const lu=$('lu'), lp=$('lp');
+  if(lu) lu.value='judge';
+  if(lp) lp.value='judge2026';
+  _pendingJudge60=true;
+  location.hash='judge60';
+  fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({u:'judge',p:'judge2026'})})
+    .then(r=>r.json()).then(d=>{
+      if(d.token){ afterLogin(d); }
+      else { _pendingJudge60=false; alert(d.error||'评委登录失败'); }
+    })
+    .catch(e=>{ _pendingJudge60=false; alert('评委登录失败: '+(e&&e.message?e.message:e)); });
+}
+function judgeGuideHtml(stepNote){
+  return '<div class="judge-guide" id="judgeGuide">'+
+    '<b>评委 60 秒</b><span class="muted">'+(stepNote||'样例战役 → Word → 问数')+'</span>'+
+    '<button type="button" class="btn sm" onclick="judgeExportWord()">① 导出 Word</button>'+
+    '<button type="button" class="btn sm ghost" onclick="judgeGoNl2sql()">② 智能问数一表</button>'+
+    '<button type="button" class="btn sm ghost" onclick="dismissJudgeGuide()">关闭</button>'+
+    '</div>';
+}
+function dismissJudgeGuide(){ _judgeGuideOn=false; const g=$('judgeGuide'); if(g) g.remove(); }
+async function pickDemoCampaignId(){
+  try{
+    const list=asList(await api('/api/campaigns'));
+    const ids=list.map(c=>c.id);
+    for(let i=0;i<JUDGE_DEMO_IDS.length;i++){
+      if(ids.indexOf(JUDGE_DEMO_IDS[i])>=0) return JUDGE_DEMO_IDS[i];
+    }
+    const done=list.find(c=>c.status==='completed'||(c.artifacts&&c.artifacts.length));
+    if(done) return done.id;
+    if(list[0]) return list[0].id;
+  }catch(e){}
+  return JUDGE_DEMO_IDS[0];
+}
+async function runJudge60sPath(){
+  _judgeGuideOn=true;
+  await nav('home');
+  const cid=await pickDemoCampaignId();
+  CURRENT=cid;
+  try{
+    await showCamp(cid);
+  }catch(e){
+    const panel=$('campPanel');
+    if(panel) setHTML('campPanel', judgeGuideHtml('未找到样例战役')+card('<p class="status-err">'+esc(e.message)+'</p><p class="muted">请运行 <code>python scripts/seed_demo_week.py</code> 后 Ctrl+F5 重试。</p>','样例未就绪'));
+    return;
+  }
+  const panel=$('campPanel');
+  if(panel && !panel.querySelector('#judgeGuide')){
+    panel.insertAdjacentHTML('afterbegin', judgeGuideHtml('已打开 '+cid+' · 先看产物，再导出 Word'));
+  }
+  const drawer=$('artDrawer');
+  if(drawer) drawer.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+async function judgeExportWord(){
+  const id=CURRENT||await pickDemoCampaignId();
+  CURRENT=id;
+  try{
+    await exportWord(id);
+    const g=$('judgeGuide');
+    if(g) g.querySelector('.muted').textContent='Word 已触发 · 下一步点「智能问数一表」';
+  }catch(e){ alert(e.message||e); }
+}
+async function judgeGoNl2sql(){
+  window.__judgeNlPending=true;
+  await nav('nl2sql');
+}
+function doLogin(){
+  const lu=$('lu'),lp=$('lp');
+  if(!lu||!lp){alert('登录表单未就绪');return;}
+  const u=lu.value.trim(),p=lp.value;
+  if(!u||!p){alert('请输入邮箱/用户名和密码');return;}
+  fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({u,p})})
+    .then(r=>r.json()).then(d=>{if(d.token){afterLogin(d);}else{alert(d.error||'登录失败');}})
+    .catch(e=>alert('登录请求失败: '+(e&&e.message?e.message:e)));
+}
+function doRegister(){
+  const email=($('re')&&$('re').value||'').trim();
+  const password=$('rp')&&$('rp').value||'';
+  const display_name=($('rn')&&$('rn').value||'').trim();
+  if(!email||!password){alert('请填写邮箱和密码');return;}
+  fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,display_name})})
+    .then(r=>r.json()).then(d=>{
+      if(d.error){alert(d.error);return;}
+      return fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({u:email,p:password})}).then(r=>r.json());
+    }).then(d=>{if(!d)return;if(d.token){afterLogin(d);}else{alert(d.error||'注册成功，请登录');toggleAuthMode('login');}})
+    .catch(e=>alert('注册失败: '+(e&&e.message?e.message:e)));
+}
 document.querySelectorAll('.nav').forEach(a=>a.onclick=()=>nav(a.dataset.v));
-function nav(v){document.querySelectorAll('.nav').forEach(a=>a.classList.toggle('active',a.dataset.v===v));({dashboard:vd,topics:vt,articles:va,pipeline:vp,queue:vq,schedule:vsch,vector:vv,sync:vsy,pdf:vpdf,logs:vl,users:vu})[v]();}
+async function nav(v){
+  document.querySelectorAll('.nav').forEach(a=>a.classList.toggle('active',a.dataset.v===v));
+  const seq=++_viewSeq;
+  const fn={home:vHome,campaigns:vList,metrics:vMetrics,factory:vFactory,logs:vLogs,users:vUsers,insights:vInsights,artifacts:vArtifacts,nl2sql:vNl2sql,bid:vBid}[v];
+  if(!fn){setHTML('content',card('<p class="muted">预赛范围外 / 敬请期待</p>','功能未开放'));return;}
+  try{await fn(seq);}catch(e){if(seq!==_viewSeq)return;setHTML('content',card('<p class="status-err">'+esc(e.message)+'</p>','加载失败'));}
+}
 function card(t,h){return '<div class="card"><h2>'+h+'</h2>'+t+'</div>';}
-async function vd(){const s=await api('/api/status');const r=await api('/api/articles');document.getElementById('content').innerHTML=card('<table><tr><td>选题总数</td><td><b>'+(s.topics||0)+'</b></td><td>文稿总数</td><td><b>'+(r.length||0)+'</b></td></tr><tr><td>队列负载</td><td>'+s.queue_load+'</td><td>NL2SQL联动</td><td class="'+(s.nl2sql==='在线'?'status-ok':'status-err')+'">'+s.nl2sql+'</td></tr><tr><td>当前角色</td><td>'+ROLE+'</td><td>数据回流报告</td><td>'+(s.feedback||0)+'份</td></tr></table>','看板总览');}
-async function vt(){const t=await api('/api/topics');let rows=t.map(x=>'<tr><td>'+x.title+'</td><td>'+x.total_score+'</td><td><span class="tag">'+x.status+'</span></td><td class="muted">'+x.source+'</td><td>'+(ROLE!=='guest'?'<button class="btn sm" onclick=mt("'+x.id+'","selected")>选用</button><button class="btn sm gray" onclick=mt("'+x.id+'","discarded")>废弃</button>':'-')+'</td></tr>').join('');document.getElementById('content').innerHTML=card((ROLE!=='guest'?'<button class="btn" onclick=ct()>采集选题</button>':'')+'<p class="muted" style="margin:8px 0">共'+t.length+'条</p><table><tr><th>标题</th><th>总分</th><th>状态</th><th>来源</th><th>操作</th></tr>'+rows+'</table>','选题列表');}
-function ct(){api('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'collect_topics',params:{topk:6}})}).then(d=>{alert('采集完成:'+d.count+'条');vt();});}
-function mt(id,st){api('/api/topic/mark',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status:st})}).then(()=>vt());}
-async function va(){const r=await api('/api/articles');let rows=r.map(x=>'<tr><td>'+x.title+'</td><td>'+(x.review_pass?'<span class="status-ok">通过</span>':'<span class="status-warn">未通过</span>')+'</td><td class="muted">'+x.id+'</td><td><button class="btn sm" onclick=prev("'+x.file+'")>预览</button></td></tr>').join('');document.getElementById('content').innerHTML=card('<p class="muted" style="margin:8px 0">共'+r.length+'篇</p><table><tr><th>标题</th><th>质检</th><th>ID</th><th>预览</th></tr>'+rows+'</table>','文稿预览');}
-function prev(f){api('/api/article/preview?file='+encodeURIComponent(f)).then(d=>{document.getElementById('content').innerHTML=card('<pre class="md">'+(d.text||'无内容').replace(/</g,'&lt;')+'</pre>','文稿预览')+'<button class="btn" onclick="va()">返回</button>';});}
-async function vp(){document.getElementById('content').innerHTML=card('<div class="row"><div class="col"><label>选题</label><input id="ptopic" placeholder="如:MCP协议实战教程"></div><div class="col"><label>标签(逗号分隔)</label><input id="ptags" placeholder="MCP,智能体"></div></div><div class="row"><div class="col"><label>摘要</label><input id="psum" placeholder="可选"></div></div><button class="btn" onclick=runpipe()>执行全链路</button><p class="muted" style="margin-top:10px">全链路:选题→大纲→写作→初审→摘要→向量化</p>','流水线');}
-function runpipe(){const topic=document.getElementById('ptopic').value;if(!topic){alert('请输入选题');return;}const tags=document.getElementById('ptags').value.split(',').filter(x=>x);api('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'generate_article',params:{topic,summary:document.getElementById('psum').value,tags}})}).then(d=>{alert('生成完成:'+d.id+' 质检:'+(d.review_pass?'通过':'未通过'));va();});}
-async function vq(){const q=await api('/api/queue');let p=q.pending.map(x=>'<tr><td>'+x.task_name+'</td><td>'+x.priority+'</td><td>'+x.status+'</td></tr>').join('');document.getElementById('content').innerHTML=card('<p>负载:'+q.load+'</p><table><tr><th>任务</th><th>优先级</th><th>状态</th></tr>'+(p||'<tr><td colspan=3 class=muted>无排队任务</td></tr>')+'</table>','任务队列');}
-async function vsch(){const t=await api('/api/schedule');let rows=t.tasks.map(x=>'<tr><td>'+x.name+'</td><td>'+x.cron+'</td><td>'+x.action+'</td><td>'+(x.enabled?'<span class=status-ok>启用</span>':'<span class=status-warn>暂停</span>')+'</td><td>'+(ROLE!=='guest'?'<button class="btn sm" onclick=tg("'+x.id+'",'+(!x.enabled)+')>'+(x.enabled?'暂停':'启用')+'</button>':'-')+'</td></tr>').join('');document.getElementById('content').innerHTML=card('<table><tr><th>名称</th><th>Cron</th><th>动作</th><th>状态</th><th>操作</th></tr>'+rows+'</table>','定时任务');}
-function tg(id,en){api('/api/schedule/toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,enabled:en})}).then(()=>vsch());}
-async function vv(){document.getElementById('content').innerHTML=card('<input id="vq" placeholder="输入检索词,如:智能体 MCP"><button class="btn" onclick=vsearch()>检索</button><div id="vres" style="margin-top:12px"></div>','向量检索');}
-function vsearch(){const q=document.getElementById('vq').value;api('/api/vector/search?q='+encodeURIComponent(q)).then(r=>{let h=r.map(x=>'<div style="padding:8px 0;border-bottom:1px solid #f0f0f0"><b>'+x.title+'</b> <span class="muted">相关度:'+x.score+'</span><br><span class="muted">'+x.source+'</span></div>').join('');document.getElementById('vres').innerHTML=h||'<p class=muted>无结果</p>';});}
-async function vsy(){document.getElementById('content').innerHTML=card('<p>正向推送:内容工厂→BidAutoPipeline知识库</p><p>反向拉取:标书项目→垂直领域选题</p><button class="btn" onclick=sf()>执行正向同步</button><button class="btn gray" onclick=sb()>执行反向拉取</button><div id="sres" style="margin-top:12px"></div>','标书同步');}
-function sf(){api('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'sync_knowledge_to_bid'})}).then(d=>{document.getElementById('sres').innerHTML='<p class=status-ok>同步完成:'+d.synced_count+'篇</p>';});}
-function sb(){api('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'fetch_bid_project_themes'})}).then(d=>{let h=d.topic_suggestions.map(x=>'<div class=tag>'+x.industry+'</div> '+x.topic).join('<br>');document.getElementById('sres').innerHTML=h;});}
-async function vpdf(){const r=await api('/api/articles');document.getElementById('content').innerHTML=card('<button class="btn" onclick=pdfall()>批量导出全部</button><p class=muted style=margin:8px 0>或单篇导出:</p><table><tr><th>标题</th><th>操作</th></tr>'+r.map(x=>'<tr><td>'+x.title+'</td><td><button class="btn sm" onclick=pdfone("'+x.id+'")>导出</button></td></tr>').join('')+'</table><div id="pdres" style=margin-top:10px></div>','PDF导出');}
-function pdfall(){api('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'export_all'})}).then(d=>{document.getElementById('pdres').innerHTML='<p class=status-ok>成功'+d.exported.length+' 失败'+d.failed.length+'</p>';});}
-function pdfone(id){api('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'export_article_pdf',params:{article_id:id}})}).then(d=>{alert('已导出:'+d.file);});}
-async function vl(){const l=await api('/api/logs');document.getElementById('content').innerHTML=card('<div class="logbox">'+l.join('\n')+'</div>','系统日志(近1天)');}
-async function vu(){const r=await api('/api/users');let rows=r.map(x=>'<tr><td>'+x.username+'</td><td>'+x.role+'</td><td>'+(x.enabled?'<span class=status-ok>启用</span>':'<span class=status-warn>禁用</span>')+'</td></tr>').join('');document.getElementById('content').innerHTML=card('<table><tr><th>用户名</th><th>角色</th><th>状态</th></tr>'+rows+'</table>','用户权限');}
+function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function viewAlive(seq){return seq===_viewSeq;}
+function showToast(msg, kind){
+  const host=$('toastHost'); if(!host||!msg) return;
+  const el=document.createElement('div');
+  el.className='toast'+(kind==='warn'?' warn':'');
+  el.innerHTML='<button type="button" class="toast-x" aria-label="关闭">×</button>'+esc(msg);
+  const closer=el.querySelector('.toast-x');
+  if(closer) closer.onclick=function(){ el.remove(); };
+  host.appendChild(el);
+  setTimeout(function(){ if(el.parentNode) el.remove(); }, 5600);
+}
+function updateLoginCopy(h){
+  const sub=$('loginSub');
+  const ban=$('loginBanner');
+  if(!sub) return;
+  const llm=(h&&h.llm)||{};
+  const hasKey=!!(llm.enabled && llm.providers && llm.providers.length);
+  const base='惠民 · AI+自选开放场景｜邮箱登录/注册｜评委 judge｜';
+  const hy=(h&&h.password_hygiene)||{};
+  let pwdBanner='';
+  if(hy.recommend_change_defaults||(h&&h.public_deploy&&hy.demo_accounts_present)){
+    pwdBanner='<div class="banner warn"><b>公网部署安全提醒</b>：演示账号仍启用 — 请立即修改 admin/operator 默认密码（docs/PROD_HARDENING.md）。评委账号可保留只读，勿用弱密做管理员。</div>';
+  }
+  if(hasKey){
+    sub.textContent=base+'已接入过渡模型，可发起战役';
+    if(ban) ban.innerHTML=pwdBanner+'<div class="banner ok">过渡模型已就绪（'+esc((llm.active_name||llm.providers[0].name)||'')+' / '+esc((llm.active_model||llm.providers[0].model)||'')+'）· 可用邮箱登录发起战役</div>';
+  }else{
+    sub.textContent=base+'未配置 Key 时可浏览看板，发起战役会明确提示';
+    if(ban) ban.innerHTML=pwdBanner+'<div class="banner warn">尚未配置可用 LLM Key — 可浏览看板；发起战役会报错（禁止静默 mock）</div>';
+  }
+}
+async function refreshBadge(){
+  const el=$('modelText');
+  const mcpEl=$('mcpText');
+  try{
+    const r=await fetch('/api/health',{cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const h=await r.json();
+    const llm=h.llm||{};
+    const provs=llm.providers||[];
+    const name=llm.active_name|| (provs[0]&&provs[0].name) || '未配置';
+    const model=llm.active_model|| (provs[0]&&provs[0].model) || '-';
+    if(el){
+      if(llm.enabled && provs.length){ el.textContent=name+' / '+model; }
+      else { el.textContent='⚠️ 无可用 LLM（禁止静默 mock）'; }
+    }
+    const mcp=h.mcp||{};
+    if(mcpEl){
+      mcpEl.textContent=mcp.ready ? (mcp.label||'MCP 工具已就绪') : (mcp.label||'MCP 封装缺失');
+    }
+    updateLoginCopy(h);
+    window.__HEALTH=h;
+    return h;
+  }catch(e){
+    console.error('refreshBadge failed', e);
+    if(el) el.textContent='健康检查失败';
+    if(mcpEl) mcpEl.textContent='MCP 未知';
+    const sub=$('loginSub');
+    if(sub) sub.textContent='惠民 · AI+自选开放场景｜邮箱登录｜健康检查失败，请确认服务已启动';
+    return null;
+  }
+}
+const SAMPLE_LEAD='本周用 AI 产品获客并跟进 10 个意向客户：产出渠道清单、跟进话术与本周复盘要点';
+const SAMPLE_BRIEF='撰写一篇「息壤+一人公司」行业综述：机会点、风险与可落地知识库要点';
+
+async function vHome(seq){
+  const s=await api('/api/status');
+  if(!viewAlive(seq)) return;
+  const tpls=await api('/api/templates');
+  if(!viewAlive(seq)) return;
+  const h=await refreshBadge();
+  if(!viewAlive(seq)) return;
+  let opts=Object.keys(tpls).map(k=>'<option value="'+k+'">'+esc(tpls[k].name)+'</option>').join('');
+  const llmOn=h&&h.llm&&h.llm.enabled;
+  const isJudge=ROLE==='guest'||_judgeGuideOn;
+  const weekStory=(s.metrics&&s.metrics.week_story)||'';
+  const bidReal=(s.metrics&&s.metrics.bid_real_count)||0;
+  const storyHtml=weekStory?'<div class="week-story"><b>本周故事</b> · '+esc(weekStory)+'</div>':'';
+  const opcClaim='<div class="opc-claim"><h2>缺编辑部的一人公司</h2><p>选题→成稿→质检→入库→战役复盘一条闭环：Word 周报可交；真政采标讯可一键成军；内容工厂与标书工作台同屏协作。</p></div>';
+  const banner=llmOn
+    ? (isJudge
+      ? '<div class="banner ok">模型已就绪 · 点下方 CTA 走 60 秒：样例 → Word → 问数</div>'
+      : '<div class="banner ok">模型已就绪 · 默认故事：缺编辑部 → 成军闭环 · 可发起战役或从标书「一键获客」</div>')
+    : '<div class="banner warn"><b>尚未配置可用 LLM</b> — 可浏览样例；发起会报错（禁止静默 mock）。见 docs/CTYUN_TRIAL.md</div>';
+  const judgeCta='<div class="card" style="background:linear-gradient(120deg,#ecfdf5,#fff);border-color:#99f6e4;margin-bottom:14px">'+
+    '<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between">'+
+    '<div><h2 style="margin:0 0 6px">评委 60 秒体验</h2>'+
+    '<p class="muted" style="margin:0;line-height:1.45">样例 <code>CMP_DEMO_WEEK_LEAD</code> → 产物 → Word → 问数一表（离线有缓存样例）</p></div>'+
+    '<button type="button" class="btn judge-cta home" onclick="runJudge60sPath()">开始 60 秒体验</button></div></div>';
+  const valueStrip='<div class="value-strip">'+
+    '<div class="step"><b>痛点</b>缺编辑部：Chat 套壳不可验收，无周报与入库</div>'+
+    '<div class="step"><b>成军</b>目标→战役矩阵→人审→产物抽屉→Word</div>'+
+    '<div class="step"><b>政企</b>真政采标讯 '+bidReal+' 条可一键成军 · 问数佐证</div>'+
+    '</div>';
+  // 非评委也减少「后台仪表盘」感：成效并入故事轨，发起表单次要
+  const storyRail=isJudge?'':('<div class="story-rail"><b>内容工厂 × 战役叙事</b> · 默认跑通「缺编辑部的一人公司」：获客/综述样例 → 同步稿件台 → 推入标书知识库。'
+    +'<div class="muted">发起 '+(s.metrics&&s.metrics.campaigns_started||0)+' · 完成 '+(s.metrics&&s.metrics.campaigns_completed||0)
+    +' · 任务 '+(s.metrics&&s.metrics.tasks_done||0)
+    +' · 约 '+(((s.metrics&&s.metrics.est_hours_saved)||0).toFixed?((s.metrics&&s.metrics.est_hours_saved)||0).toFixed(1):(s.metrics&&s.metrics.est_hours_saved)||0)+' 人时 · NL2SQL '+esc(s.nl2sql||'-')
+    +' · <a href="#" onclick="nav(\'metrics\');return false;">成效详情</a> · <a href="#" onclick="nav(\'bid\');return false;">标书一键成军</a></div></div>');
+  const startCard=isJudge?'':(card('<div class="hero-goal"><div><label class="muted">战役目标</label><textarea id="goal">'+SAMPLE_LEAD+'</textarea></div><div style="min-width:180px"><label class="muted">模板</label><select id="tpl">'+opts+'</select><div style="margin-top:10px">'+(ROLE!=='guest'?'<button class="btn" onclick="startCamp()">发起成军</button>':'<span class="muted">只读评委账号</span>')+'</div></div></div>'+
+      '<p class="muted" style="margin-top:8px">样例：<a href="#" onclick="var g=$(\'goal\'),t=$(\'tpl\');if(g)g.value=\''+SAMPLE_LEAD+'\';if(t)t.value=\'lead_gen\';return false;">① AI获客跟进</a> · <a href="#" onclick="var g=$(\'goal\'),t=$(\'tpl\');if(g)g.value=\''+SAMPLE_BRIEF+'\';if(t)t.value=\'industry_brief\';return false;">② 行业综述</a></p>','发起战役 · 成军闭环入口'));
+  setHTML('content',
+    opcClaim+banner+judgeCta+storyHtml+valueStrip+storyRail+startCard+
+    '<div id="campPanel">'+renderCampHint(s.campaigns)+'</div>');
+}
+function renderCampHint(list){
+  if(!list||!list.length) return card('<p class="muted">尚无战役。运行 <code>python scripts/seed_demo_week.py</code> 载入演示周包，或输入目标后「发起成军」。</p>','当前战役');
+  const rows=list.slice(0,5).map(c=>'<tr><td>'+esc(c.id)+'</td><td>'+esc(c.goal).slice(0,40)+'</td><td><span class="tag">'+esc(c.status)+'</span></td><td><button class="btn sm" onclick="openCamp(\''+c.id+'\')">打开</button></td></tr>').join('');
+  return card('<table><tr><th>ID</th><th>目标</th><th>状态</th><th></th></tr>'+rows+'</table>','最近战役');
+}
+async function startCamp(){
+  const goalEl=$('goal'), tplEl=$('tpl');
+  if(!goalEl||!tplEl){alert('请先回到「成军看板」再发起');return;}
+  const goal=goalEl.value.trim();
+  const template=tplEl.value;
+  if(!goal){alert('请输入目标');return;}
+  if(!setHTML('campPanel',card('<p>司令 Agent 正在拆解任务树…</p>','执行中'))){
+    alert('看板未就绪，请刷新后重试');return;
+  }
+  try{
+    const c=await api('/api/campaign/start',{method:'POST',body:JSON.stringify({goal,template,auto_approve:false})});
+    CURRENT=c.id; await showCamp(c.id);
+  }catch(e){
+    if(!setHTML('campPanel',card('<p class="status-err">'+esc(e.message)+'</p><p class="muted">请确认 interim Key（TokenPlan/SenseNova）或 <code>XIRANG_API_KEY</code> 已写入 gitignore 的 config.yaml / 环境变量后重启 Web。演示路径禁止静默 mock。</p>','发起失败')))
+      alert(e.message);
+  }
+}
+async function openCamp(id){CURRENT=id; await showCamp(id);}
+async function showCamp(id){
+  const c=await api('/api/campaign/'+id);
+  if(!$('campPanel')){
+    await nav('home');
+    if(!$('campPanel')){alert('无法打开战役看板');return;}
+  }
+  const by={pending:[],running:[],done:[],failed:[]};
+  (c.tasks||[]).forEach(t=>{const s=t.status||'pending';(by[s]=by[s]||[]).push(t);});
+  const col=(title,arr)=>'<div class="col-board"><h3>'+title+' ('+arr.length+')</h3>'+(arr.map(t=>'<div class="task"><div class="role">'+esc(t.role)+'</div><div>'+esc(t.title)+'</div>'+(t.error?'<div class="status-err">'+esc(t.error)+'</div>':'')+(t.result_artifact_id?'<button class="btn sm" style="margin-top:6px" onclick="viewArt(\''+id+'\',\''+t.result_artifact_id+'\')">打开产物</button>':'')+'</div>').join('')||'<p class="muted">空</p>')+'</div>';
+  let actions='';
+  if(ROLE!=='guest'){
+    if(c.status==='planned'||c.status==='rejected') actions+='<button class="btn" onclick="approve(\''+id+'\')">人审通过并执行</button><button class="btn danger" onclick="reject(\''+id+'\')">驳回</button>';
+    if(c.status==='awaiting_review') actions+='<button class="btn" onclick="approve(\''+id+'\')">终审完成</button><button class="btn" onclick="exportWord(\''+id+'\')">导出 Word</button><button class="btn ghost" onclick="mkReport(\''+id+'\')">导出周报(MD/PDF)</button>';
+    if(c.status==='running') actions+='<button class="btn gray" onclick="openCamp(\''+id+'\')">刷新</button>';
+    if(c.status==='completed') actions+='<button class="btn" onclick="exportWord(\''+id+'\')">导出 Word</button><button class="btn ghost" onclick="mkReport(\''+id+'\')">导出周报(MD/PDF)</button>';
+    if(c.status==='completed'||c.status==='awaiting_review'||(c.artifacts||[]).length) actions+=' <button class="btn ghost" onclick="syncCampFactory(\''+id+'\')">同步到内容工厂</button>';
+    if((c.artifacts||[]).length) actions+=' <button class="btn ghost" onclick="pushCampBid(\''+id+'\')">推入标书知识库</button>';
+  }else{
+    actions+='<span class="muted">评委只读 · 可查看看板与产物 · 可尝试导出 Word</span> ';
+    if(c.status==='completed'||c.status==='awaiting_review') actions+='<button class="btn sm" onclick="exportWord(\''+id+'\')">导出 Word</button>';
+  }
+  const gateNote=(c.gate&&c.gate.note)?('<p class="muted" style="margin:8px 0">人审意见：'+esc(c.gate.note)+'</p>'):'';
+  const gateBox=(ROLE!=='guest'&&(c.status==='planned'||c.status==='rejected'||c.status==='awaiting_review'))
+    ? '<div class="row" style="margin-top:8px"><div class="col"><label class="muted">人审意见（可选）</label><input id="gateNote" placeholder="例如：渠道计划需补社群节奏" value="'+esc((c.gate&&c.gate.note)||'')+'"></div></div>'
+    : '';
+  const channelCheck=(c.template==='lead_gen')
+    ? card('<p class="muted">渠道预览清单（对照运营产物验收）</p><ul class="check-list">'+
+        '<li>公域种草文案 ≥3 条</li><li>社群首触 / 跟进话术</li><li>意向客户跟进表 ≥10 行</li>'+
+        '<li>渠道投放计划（动作+验收标准）</li><li>本周节奏 D1–D6</li></ul>','渠道预览清单')
+    : '';
+  const artCount=(c.artifacts||[]).length;
+  const arts=(c.artifacts||[]).map(a=>'<tr><td><span class="tag">'+esc(a.role)+'</span></td><td>'+esc(a.title)+
+    (a.factory_article_id?' <span class="tag">工厂 '+esc(a.factory_article_id)+'</span>':'')+
+    '</td><td>'+esc(a.created_at)+'</td><td>'+
+    '<button class="btn sm" onclick="viewArt(\''+id+'\',\''+a.id+'\')">打开产物</button> '+
+    '<button class="btn sm ghost" onclick="previewArtInline(\''+id+'\',\''+a.id+'\')">预览</button> '+
+    '<button class="btn sm ghost" onclick="exportArtDocx(\''+id+'\',\''+a.id+'\')">导出 Word</button>'+
+    (ROLE!=='guest'?' <button class="btn sm ghost" onclick="pushCampArtBid(\''+id+'\',\''+a.id+'\')">推入标书</button>':'')+
+    '</td></tr>').join('');
+  const drawerOpen=artCount>0
+    ? '<div class="banner ok">本战役已有 <b>'+artCount+'</b> 件产物 — 在下方「产物抽屉」点「打开产物 / 预览」，或侧栏「产物中心」统一查看。演示交付优先点「导出 Word」。内容官产物可「同步到内容工厂」。</div>'
+    : '<div class="banner warn">尚无产物。人审通过并执行后，产物会出现在本抽屉。</div>';
+  setHTML('campPanel',
+    card('<p><b>'+esc(c.id)+'</b> · <span class="tag">'+esc(c.status)+'</span> · 模型徽章：'+esc(c.llm_provider||'N/A')+'</p>'+
+      '<p style="margin:8px 0">'+esc(c.goal)+'</p>'+
+      '<p class="muted">'+(c.plan&&c.plan.summary?esc(c.plan.summary):'')+(c.plan&&c.plan.fallback?' · <span class="status-warn">结构 fallback</span>':'')+'</p>'+
+      gateNote+gateBox+
+      '<div style="margin:12px 0">'+actions+'</div>'+
+      '<div class="kanban">'+col('待执行',by.pending||[])+col('进行中',by.running||[])+col('已完成',by.done||[])+col('失败',by.failed||[])+'</div>','战役看板')+
+    channelCheck+
+    drawerOpen+
+    '<div class="art-drawer" id="artDrawer"><h2>产物抽屉 · '+artCount+' 件</h2>'+
+      '<table><tr><th>角色</th><th>标题</th><th>时间</th><th>操作</th></tr>'+(arts||'<tr><td colspan=4 class=muted>暂无产物</td></tr>')+'</table>'+
+      '<div id="artBox" class="preview-pane"><p class="muted">点击「打开产物」或「预览」在此查看内容</p></div></div>');
+  // 自动预览最新产物（离开看板后不再写入）
+  if(artCount>0 && $('artBox')){
+    const last=c.artifacts[c.artifacts.length-1];
+    const campId=id;
+    previewArtInline(campId, last.id).catch(function(){});
+  }
+}
+async function syncCampFactory(id){
+  try{
+    const r=await api('/api/campaign/'+id+'/sync_to_factory',{method:'POST',body:'{}'});
+    alert('已同步到内容工厂：'+(r.count||0)+' 件\n可到侧栏「内容工厂 → 稿件台」查看');
+    await showCamp(id);
+  }catch(e){alert(e.message);}
+}
+async function pushCampBid(id){
+  try{
+    const r=await api('/api/bid/push_campaign',{method:'POST',body:JSON.stringify({campaign_id:id})});
+    alert('已推入标书知识库 '+(r.pushed_count||1)+' 件\n可到侧栏「标书工作台」查看');
+  }catch(e){alert(e.message);}
+}
+async function pushCampArtBid(cid, aid){
+  try{
+    const r=await api('/api/bid/push_campaign',{method:'POST',body:JSON.stringify({campaign_id:cid,artifact_id:aid})});
+    alert('产物已推入标书知识库\n'+(r.path||''));
+  }catch(e){alert(e.message);}
+}
+async function approve(id){
+  const noteEl=$('gateNote');
+  const note=(noteEl&&noteEl.value.trim())||'评委演示放行';
+  try{await api('/api/campaign/'+id+'/approve',{method:'POST',body:JSON.stringify({note})});await showCamp(id);}catch(e){alert(e.message);}
+}
+async function reject(id){const note=prompt('驳回原因','请补充获客渠道')||'驳回';await api('/api/campaign/'+id+'/reject',{method:'POST',body:JSON.stringify({note})});await showCamp(id);}
+async function mkReport(id){try{const r=await api('/api/campaign/'+id+'/report',{method:'POST',body:'{}'});alert('周报已生成\nWord: '+(r.docx||'-')+'\nPDF: '+(r.pdf||'-')+'\nMD: '+(r.md||r.path||''));await showCamp(id);}catch(e){alert(e.message);}}
+async function exportWord(id){
+  try{
+    const r=await api('/api/campaign/'+id+'/report_docx',{method:'POST',body:'{}'});
+    const resp=await fetch('/api/campaign/'+id+'/report_docx/file',{headers:{Authorization:'Bearer '+TOKEN}});
+    if(!resp.ok) throw new Error('下载失败 '+resp.status);
+    const blob=await resp.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=(id+'_weekly_report.docx');
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    if($('artBox')){
+      setHTML('artBox','<div class="banner ok">已导出 Word：'+esc(r.docx||id)+'</div><p class="muted">也可在产物抽屉继续预览各角色产出</p>');
+    }else{
+      alert('已导出 Word：'+(r.docx||id));
+    }
+  }catch(e){alert(e.message);}
+}
+async function previewArtInline(cid,aid){
+  try{
+    const r=await api('/api/campaign/'+cid+'/artifact/'+aid);
+    setHTML('artBox','<p><b>'+esc(r.title||aid)+'</b> · <span class="tag">'+esc(r.role||'')+'</span> '+
+      '<button class="btn sm" onclick="exportArtDocx(\''+cid+'\',\''+aid+'\')">导出 Word</button></p>'+
+      '<div class="pre">'+esc(r.text)+'</div>');
+  }catch(e){setHTML('artBox','<p class="status-err">'+esc(e.message)+'</p>');}
+}
+async function viewArt(cid,aid){
+  try{
+    if(!$('artBox')){await openCamp(cid);}
+    await previewArtInline(cid,aid);
+    const box=$('artDrawer'); if(box) box.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }catch(e){alert(e.message);}
+}
+async function exportArtDocx(cid,aid){
+  try{
+    const r=await api('/api/campaign/'+cid+'/artifact/'+aid+'/docx',{method:'POST',body:'{}'});
+    const name=r.docx?r.docx.split(/[/\\\\]/).pop(): (cid+'_'+aid+'.docx');
+    const resp=await fetch('/api/download_docx?path='+encodeURIComponent(name),{headers:{Authorization:'Bearer '+TOKEN}});
+    if(!resp.ok) throw new Error('下载失败');
+    const blob=await resp.blob(); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }catch(e){alert(e.message);}
+}
+
+async function vList(seq){
+  const list=asList(await api('/api/campaigns'));
+  if(!viewAlive(seq)) return;
+  const rows=list.map(c=>'<tr><td>'+esc(c.id)+'</td><td>'+esc(c.goal)+'</td><td>'+esc(c.template)+'</td><td><span class="tag">'+esc(c.status)+'</span></td><td>'+esc(c.llm_provider||'-')+'</td><td><button class="btn sm" onclick="navHomeOpen(\''+c.id+'\')">打开</button></td></tr>').join('');
+  setHTML('content',card('<table><tr><th>ID</th><th>目标</th><th>模板</th><th>状态</th><th>模型</th><th></th></tr>'+(rows||'<tr><td colspan=6 class=muted>暂无</td></tr>')+'</table>','战役列表'));
+}
+async function navHomeOpen(id){
+  await nav('home');
+  if($('campPanel')) await openCamp(id);
+  else alert('看板未就绪，请手动打开战役');
+}
+async function vMetrics(seq){
+  const m=await api('/api/metrics')||{};
+  if(!viewAlive(seq)) return;
+  const started=Number(m.campaigns_started)||0;
+  const completed=Number(m.campaigns_completed)||0;
+  const rate=started>0?((completed/started)*100).toFixed(1)+'%':'—';
+  const hours=m.est_hours_saved;
+  const hoursTxt=(hours!=null&&hours.toFixed)?Number(hours).toFixed(1):String(hours||0);
+  const llmOk=Number(m.llm_calls_ok)||0;
+  const llmFail=Number(m.llm_calls_fail)||0;
+  const bt=m.by_template||{};
+  const lg=bt.lead_gen||{};
+  const ib=bt.industry_brief||{};
+  const ot=bt.other||{};
+  const story=m.week_story||'';
+  const bidReal=Number(m.bid_real_count)||0;
+  const bidDemo=Number(m.bid_demo_count)||0;
+  const bidRows=Number(m.bid_row_count)||0;
+  setHTML('content',card(
+    (story?'<div class="week-story"><b>本周故事</b> · '+esc(story)+'</div>':'')+
+    '<p class="muted" style="margin:-4px 0 14px">缺编辑部闭环成效 · 绑定演示周包与标讯库计数</p>'+
+    '<div class="metrics">'+
+      '<div class="metric"><b>'+started+'</b><span>发起战役数</span></div>'+
+      '<div class="metric"><b>'+completed+'</b><span>完成战役数</span></div>'+
+      '<div class="metric"><b>'+rate+'</b><span>完成率</span></div>'+
+      '<div class="metric"><b>'+(Number(m.tasks_done)||0)+'</b><span>已完成任务数</span></div>'+
+      '<div class="metric"><b>'+(Number(m.artifacts_count)||0)+'</b><span>产物数量</span></div>'+
+      '<div class="metric"><b>'+hoursTxt+'</b><span>预估节省人时</span></div>'+
+      '<div class="metric"><b>'+llmOk+' / '+llmFail+'</b><span>LLM 调用成功/失败</span></div>'+
+      '<div class="metric"><b>'+bidReal+'</b><span>真实标讯条数</span></div>'+
+      '<div class="metric"><b>'+bidRows+'</b><span>标讯库总行（含演示 '+bidDemo+'）</span></div>'+
+      '<div class="metric"><b>'+(Number(m.demo_campaign_count)||0)+'</b><span>演示样例战役</span></div>'+
+    '</div>'+
+    '<h3 style="margin:18px 0 10px;font-size:14px;color:var(--muted)">按战役模板</h3>'+
+    '<div class="metrics">'+
+      '<div class="metric"><b>'+(lg.started||0)+' / '+(lg.completed||0)+'</b><span>AI获客跟进 · 发起/完成</span></div>'+
+      '<div class="metric"><b>'+(ib.started||0)+' / '+(ib.completed||0)+'</b><span>行业综述 · 发起/完成</span></div>'+
+      '<div class="metric"><b>'+(ot.started||0)+' / '+(ot.completed||0)+'</b><span>其他模板 · 发起/完成</span></div>'+
+    '</div>'+
+    '<details style="margin-top:16px">'+
+      '<summary class="muted" style="cursor:pointer;font-size:13px">高级 / 原始数据</summary>'+
+      '<pre class="pre" style="margin-top:10px">'+esc(JSON.stringify(m,null,2))+'</pre>'+
+    '</details>'+
+    '<p class="muted" style="margin-top:10px">说明：战役埋点 + bid_telecom.db 计数；标讯→战役见侧栏标书工作台。</p>',
+    '成效指标'));
+}
+async function vFactory(seq){
+  if(!viewAlive(seq)) return;
+  setHTML('content',
+    '<div class="banner ok">内容工厂 · 缺编辑部闭环 · 选题→生成→质检→向量 · 可与成军战役双向关联</div>'+
+    '<div class="tabs" id="ftabs">'+
+      '<button class="active" data-ft="topics" onclick="factoryTab(\'topics\')">选题池</button>'+
+      '<button data-ft="articles" onclick="factoryTab(\'articles\')">稿件台</button>'+
+      '<button data-ft="pipeline" onclick="factoryTab(\'pipeline\')">流水线</button>'+
+      '<button data-ft="vector" onclick="factoryTab(\'vector\')">向量检索</button>'+
+      '<button data-ft="schedule" onclick="factoryTab(\'schedule\')">定时任务</button>'+
+      '<button data-ft="queue" onclick="factoryTab(\'queue\')">任务队列</button>'+
+      '<button data-ft="bid" onclick="factoryTab(\'bid\')">标书/知识同步</button>'+
+    '</div>'+
+    '<div id="factoryBody"><p class="muted">加载中…</p></div>');
+  await factoryTab('topics');
+}
+async function factoryTab(name){
+  document.querySelectorAll('#ftabs button').forEach(b=>b.classList.toggle('active',b.dataset.ft===name));
+  const box=$('factoryBody'); if(!box) return;
+  setHTML('factoryBody','<p class="muted">加载中…</p>');
+  try{
+    if(name==='topics') await fTabTopics();
+    else if(name==='articles') await fTabArticles();
+    else if(name==='pipeline') await fTabPipeline();
+    else if(name==='vector') await fTabVector();
+    else if(name==='schedule') await fTabSchedule();
+    else if(name==='queue') await fTabQueue();
+    else if(name==='bid') await fTabBid();
+  }catch(e){setHTML('factoryBody',card('<p class="status-err">'+esc(e.message)+'</p>','加载失败'));}
+}
+async function fTabTopics(){
+  let topics=[];
+  try{topics=await api('/api/topics')||[];}catch(e){topics=[];}
+  const rows=(topics||[]).slice().reverse().map(t=>{
+    const sc=t.scores||{};
+    const scoreTxt=(t.total_score!=null?'总分'+t.total_score+' · ':'')+(typeof sc==='object'
+      ? Object.keys(sc).slice(0,4).map(k=>k+':'+sc[k]).join(' ')
+      : String(sc||'-'));
+    const st=t.status||'candidate';
+    return '<tr><td>'+esc(t.id||'')+'</td><td>'+esc(t.title)+'<div class="muted">'+esc((t.summary||'').slice(0,80))+'</div></td>'+
+      '<td>'+esc(scoreTxt).slice(0,60)+'</td><td><span class="tag">'+esc(st)+'</span></td><td>'+
+      (ROLE!=='guest'
+        ? '<button class="btn sm" onclick="markTopic(\''+esc(t.id)+'\',\'selected\')">选用</button> '+
+          '<button class="btn sm ghost" onclick="markTopic(\''+esc(t.id)+'\',\'discarded\')">废弃</button> '+
+          '<button class="btn sm" onclick="genFromTopic(\''+esc(t.title).replace(/'/g,'')+'\',\''+esc((t.summary||'').slice(0,80)).replace(/'/g,'')+'\')">生成稿</button>'
+        : '<span class="muted">只读</span>')+'</td></tr>';
+  }).join('');
+  setHTML('factoryBody',
+    card(
+      (ROLE!=='guest'
+        ? '<button class="btn" onclick="collectTopics()">采集选题</button> '
+        : '')+
+      '<span class="muted">RSS/示例源 → LLM 多维打分 → 选用后可一键生成</span>'+
+      '<div id="topicBox" style="margin-top:10px"></div>',
+      '选题池 · 操作')+
+    card('<div class="table-wrap"><table><tr><th>ID</th><th>标题</th><th>分数</th><th>状态</th><th>操作</th></tr>'+
+      (rows||'<tr><td colspan=5 class=muted>暂无选题 · 运行 <code>python scripts/seed_demo_week.py</code> 载入演示周包，或点「采集选题」</td></tr>')+'</table></div>','选题列表'));
+}
+async function collectTopics(){
+  setHTML('topicBox','<p class="muted">采集中…</p>');
+  try{
+    const r=await api('/api/run',{method:'POST',body:JSON.stringify({action:'collect_topics',params:{topk:6}})});
+    setHTML('topicBox','<div class="banner ok">采集完成 · '+(r.topics?r.topics.length:(r.count||0))+' 条</div>');
+    await fTabTopics();
+  }catch(e){setHTML('topicBox','<p class="status-err">'+esc(e.message)+'</p>');}
+}
+async function markTopic(id,status){
+  try{await api('/api/topic/mark',{method:'POST',body:JSON.stringify({id,status})});await fTabTopics();}
+  catch(e){alert(e.message);}
+}
+async function genFromTopic(title,summary){
+  if(ROLE==='guest'){alert('只读');return;}
+  setHTML('topicBox','<p class="muted">生成中…</p>');
+  try{
+    const d=await api('/api/run',{method:'POST',body:JSON.stringify({action:'generate_article',params:{topic:title,summary:summary||'',tags:['成军台','选题池']}})});
+    setHTML('topicBox','<div class="banner ok">已生成 <b>'+esc(d.id)+'</b> · 质检:'+d.review_pass+
+      ' <button class="btn sm" onclick="factoryTab(\'articles\')">去稿件台</button></div>');
+  }catch(e){setHTML('topicBox','<p class="status-err">'+esc(e.message)+'</p>');}
+}
+async function fTabArticles(){
+  let articles=[];
+  try{articles=await api('/api/articles')||[];}catch(e){articles=[];}
+  const camps=await (async()=>{try{return await api('/api/campaigns')||[];}catch(e){return[];}})();
+  const campOpts=camps.slice(0,20).map(c=>'<option value="'+esc(c.id)+'">'+esc(c.id)+' · '+esc((c.goal||'').slice(0,24))+'</option>').join('');
+  const rows=(articles||[]).slice().reverse().slice(0,40).map(a=>'<tr><td>'+esc(a.id)+'</td><td>'+esc(a.title)+
+    (a.campaign_id?'<div class="muted">战役 '+esc(a.campaign_id)+'</div>':'')+
+    '</td><td>'+(a.review_pass?'<span class="status-ok">通过</span>':'<span class="status-warn">待审</span>')+'</td><td>'+esc(a.created_at||'')+'</td><td>'+
+    '<button class="btn sm" onclick="previewArticle(\''+esc(a.file||'')+'\',\''+esc(a.id)+'\')">预览</button> '+
+    '<button class="btn sm ghost" onclick="qaArticle(\''+esc(a.id)+'\')">质检</button> '+
+    '<button class="btn sm ghost" onclick="exportArticleDocx(\''+esc(a.id)+'\')">导出 Word</button> '+
+    (ROLE!=='guest'?'<button class="btn sm ghost" onclick="pushWechatDraft(\''+esc(a.id)+'\')">推送到公众号草稿</button> ':'')+
+    (ROLE!=='guest'?'<button class="btn sm ghost" onclick="linkArticleCamp(\''+esc(a.id)+'\')">关联战役</button> ':'')+
+    (ROLE!=='guest'?'<button class="btn sm ghost" onclick="pushArticleBid(\''+esc(a.id)+'\')">推入标书知识库</button>':'')+
+    '</td></tr>').join('');
+  let wechatHint='';
+  try{
+    const ws=await api('/api/wechat/status');
+    wechatHint=ws.configured
+      ? '<div class="banner ok" style="margin-bottom:8px">公众号草稿通道已配置 · AppID '+esc(ws.app_id_masked||'')+
+        (ws.has_thumb_media_id?' · 封面 media_id 已设':' · <b>尚缺封面 thumb_media_id</b>（推送前请配置）')+
+        '</div>'
+      : '<div class="banner warn" style="margin-bottom:8px">未配置公众号凭证 — 推送将明确跳过。请本机填写 '+
+        '<code>config.wechat.local.yaml</code> 或环境变量（勿把密钥贴到聊天）。详见 <code>docs/WECHAT_PUBLISH.md</code></div>';
+  }catch(e){wechatHint='';}
+  setHTML('factoryBody',
+    card(
+      (ROLE!=='guest'
+        ? '<div class="row"><div class="col"><input id="genTopic" placeholder="选题标题" value="一人成军实战：用息壤拉起 AI 员工矩阵"></div>'+
+          '<div class="col" style="max-width:160px"><button class="btn" onclick="runFactoryDemo()">生成文稿</button></div></div>'
+        : '<p class="muted">评委只读 · 可预览已有文章</p>')+
+      '<div id="fbox" style="margin-top:8px"></div>'+
+      (ROLE!=='guest'?'<div class="row" style="margin-top:8px"><div class="col"><label class="muted">关联到战役</label><select id="linkCamp"><option value="">选择战役…</option>'+campOpts+'</select></div></div>':''),
+      '稿件台 · 生成')+
+    card(
+      wechatHint+
+      '<div class="table-wrap"><table><tr><th>ID</th><th>标题</th><th>质检</th><th>时间</th><th>操作</th></tr>'+
+      (rows||'<tr><td colspan=5 class=muted>暂无文章 · 运行 <code>python scripts/seed_demo_week.py</code> 载入 ART_DEMO_WEEK_01/02/03，或上方「生成文稿」</td></tr>')+'</table></div>'+
+      '<div id="articlePreview" class="preview-pane"><p class="muted">点击「预览」查看全文</p></div>',
+      '文章列表'));
+}
+function runFactoryDemo(){
+  if(ROLE==='guest'){alert('只读账号');return;}
+  const topic=(($('genTopic')&&$('genTopic').value)||'一人成军实战：用息壤拉起 AI 员工矩阵').trim();
+  const box=$('fbox');
+  if(box) box.innerHTML='<p class="muted">生成中…</p>';
+  api('/api/run',{method:'POST',body:JSON.stringify({action:'generate_article',params:{topic:topic,summary:'成军台演示',tags:['成军台']}})})
+    .then(async d=>{
+      const file=(d.file||'').split(/[/\\\\]/).pop();
+      setHTML('fbox','<div class="banner ok">已生成 <b>'+esc(d.id)+'</b> · 质检:'+d.review_pass+
+        ' <button class="btn sm" onclick="previewArticle(\''+esc(file)+'\',\''+esc(d.id)+'\')">预览</button> '+
+        '<button class="btn sm" onclick="exportArticleDocx(\''+esc(d.id)+'\')">导出 Word</button></div>');
+      if(file) await previewArticle(file, d.id);
+    })
+    .catch(e=>{if(!setHTML('fbox','<p class="status-err">'+esc(e.message)+'</p>')) alert(e.message);});
+}
+async function qaArticle(aid){
+  setHTML('articlePreview','<p class="muted">质检中…</p>');
+  try{
+    const r=await api('/api/run',{method:'POST',body:JSON.stringify({action:'quality_check',params:{article_id:aid}})});
+    setHTML('articlePreview','<div class="banner '+(r.pass?'ok':'warn')+'">质检 '+(r.pass?'通过':'未通过')+
+      ' · 字数 '+(r.word_count||'-')+'</div><pre class="pre">'+esc(JSON.stringify(r,null,2))+'</pre>');
+  }catch(e){setHTML('articlePreview','<p class="status-err">'+esc(e.message)+'</p>');}
+}
+async function linkArticleCamp(aid){
+  const cid=($('linkCamp')&&$('linkCamp').value)||'';
+  if(!cid){alert('请先在上方下拉选择战役');return;}
+  try{
+    await api('/api/article/link_campaign',{method:'POST',body:JSON.stringify({article_id:aid,campaign_id:cid})});
+    alert('已关联到 '+cid);
+    await fTabArticles();
+  }catch(e){alert(e.message);}
+}
+async function pushArticleBid(aid){
+  if(ROLE==='guest'){alert('只读');return;}
+  try{
+    const r=await api('/api/bid/push_article',{method:'POST',body:JSON.stringify({article_id:aid})});
+    alert('已推入标书知识库\n'+(r.item&&r.item.path?r.item.path:r.target||''));
+  }catch(e){alert(e.message);}
+}
+async function pushWechatDraft(aid){
+  if(ROLE==='guest'){alert('只读');return;}
+  setHTML('articlePreview','<p class="muted">正在推送到公众号草稿箱…</p>');
+  try{
+    const r=await api('/api/wechat/publish_draft',{method:'POST',body:JSON.stringify({article_id:aid})});
+    if(r.status==='ok'||r.ok){
+      setHTML('articlePreview','<div class="banner ok">已写入公众号草稿箱</div>'+
+        '<p>media_id: <code>'+esc(r.media_id||'')+'</code></p>'+
+        '<p class="muted">'+esc(r.tip||'请到公众平台「草稿箱」核对后手动发布（不成军台群发）')+'</p>'+
+        '<pre class="pre">'+esc(JSON.stringify(r,null,2))+'</pre>');
+    }else if(r.status==='skipped'){
+      setHTML('articlePreview','<div class="banner warn">未配置公众号凭证</div>'+
+        '<p>'+esc(r.reason||'未配置')+'</p><p class="muted">'+esc(r.hint||'')+'</p>');
+    }else{
+      setHTML('articlePreview','<div class="banner warn">推送失败</div>'+
+        '<p class="status-err">'+esc(r.error||r.reason||JSON.stringify(r))+'</p>'+
+        '<p class="muted">常见原因：AppSecret 错误、IP 未进白名单、缺少封面 thumb_media_id。见 docs/WECHAT_PUBLISH.md</p>');
+    }
+  }catch(e){setHTML('articlePreview','<p class="status-err">'+esc(e.message)+'</p>');}
+}
+async function previewArticle(file, id){
+  try{
+    if(!$('articlePreview') && $('factoryBody')){
+      await factoryTab('articles');
+    }
+    if(!$('articlePreview')){
+      console.warn('previewArticle: articlePreview still missing');
+      return;
+    }
+    const safe=(file||'').split(/[/\\\\]/).pop();
+    if(!safe){setHTML('articlePreview','<p class="status-err">缺少文件名</p>');return;}
+    const r=await api('/api/article/preview?file='+encodeURIComponent(safe));
+    setHTML('articlePreview','<p><b>'+esc(id||safe)+'</b> '+
+      (id?'<button class="btn sm" onclick="exportArticleDocx(\''+esc(id)+'\')">导出 Word</button> ':'')+
+      (id?'<button class="btn sm ghost" onclick="qaArticle(\''+esc(id)+'\')">质检</button>':'')+
+      (id&&ROLE!=='guest'?' <button class="btn sm ghost" onclick="pushWechatDraft(\''+esc(id)+'\')">推送到公众号草稿</button>':'')+
+      '</p><div class="pre">'+esc(r.text)+'</div>');
+    const box=$('articlePreview'); if(box) box.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }catch(e){
+    if(!setHTML('articlePreview','<p class="status-err">'+esc(e.message)+'</p>'))
+      alert(e.message);
+  }
+}
+async function exportArticleDocx(aid){
+  try{
+    const resp=await fetch('/api/article/'+encodeURIComponent(aid)+'/docx',{headers:{Authorization:'Bearer '+TOKEN}});
+    if(!resp.ok){const t=await resp.text(); throw new Error(t||('HTTP '+resp.status));}
+    const blob=await resp.blob(); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=aid+'.docx'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }catch(e){alert(e.message);}
+}
+async function fTabPipeline(){
+  setHTML('factoryBody',card(
+    '<p class="muted">一键全链路：选题采集 → 多 Agent 生成 → 质检门控 → 向量入库（生成时自动）→ PDF</p>'+
+    '<div class="row"><div class="col"><input id="pipeTopic" placeholder="留空则自动取最高分选题"></div></div>'+
+    (ROLE!=='guest'
+      ? '<button class="btn" onclick="runFullPipeline()">启动全链路</button>'
+      : '<p class="muted">只读账号不可启动</p>')+
+    '<div id="pipeBox" style="margin-top:12px"></div>',
+    '流水线'));
+}
+async function runFullPipeline(){
+  const topic=(($('pipeTopic')&&$('pipeTopic').value)||'').trim();
+  setHTML('pipeBox','<p class="muted">全链路执行中，请稍候…</p>');
+  try{
+    const r=await api('/api/run',{method:'POST',body:JSON.stringify({action:'full_pipeline',params:{topic:topic||undefined}})});
+    setHTML('pipeBox','<div class="banner ok">完成 · 稿件 <b>'+esc(r.article_id||'-')+'</b> · 质检:'+esc(String(r.qa_pass))+
+      '</div><pre class="pre">'+esc(JSON.stringify(r,null,2))+'</pre>');
+  }catch(e){setHTML('pipeBox','<p class="status-err">'+esc(e.message)+'</p>');}
+}
+async function fTabVector(){
+  setHTML('factoryBody',card(
+    '<div class="row"><div class="col"><input id="vq" placeholder="检索关键词，如：一人成军 / MCP / NL2SQL"></div>'+
+    '<div class="col" style="max-width:120px"><button class="btn" onclick="doVSearch()">检索</button></div></div>'+
+    '<div id="vbox" style="margin-top:12px"><p class="muted">输入关键词检索向量知识库</p></div>',
+    '向量检索'));
+}
+async function doVSearch(){
+  const q=(($('vq')&&$('vq').value)||'').trim();
+  if(!q){alert('请输入关键词');return;}
+  setHTML('vbox','<p class="muted">检索中…</p>');
+  try{
+    const r=await api('/api/vector/search?q='+encodeURIComponent(q));
+    const items=Array.isArray(r)?r:(r.results||r.hits||[]);
+    if(!items.length){setHTML('vbox','<p class="muted">无命中 · '+esc(JSON.stringify(r).slice(0,200))+'</p>');return;}
+    const rows=items.map(x=>'<tr><td>'+esc(x.id||x.doc_id||'')+'</td><td>'+esc(x.title||'')+'</td><td>'+esc(x.score!=null?Number(x.score).toFixed(3):'-')+'</td><td>'+esc((x.snippet||x.summary||x.text||'').toString().slice(0,120))+'</td></tr>').join('');
+    setHTML('vbox','<div class="table-wrap"><table><tr><th>ID</th><th>标题</th><th>分数</th><th>摘要</th></tr>'+rows+'</table></div>');
+  }catch(e){setHTML('vbox','<p class="status-err">'+esc(e.message)+'</p>');}
+}
+async function fTabSchedule(){
+  const sch=await api('/api/schedule');
+  let runtime=sch.runtime||null;
+  try{ if(!runtime) runtime=await api('/api/schedule/status'); }catch(e){ runtime=null; }
+  const tasks=(sch&&sch.tasks)!=null?sch.tasks:sch;
+  const list=asList(tasks);
+  const running=!!(runtime&&runtime.running);
+  const statusBanner='<div class="banner '+(running?'ok':'warn')+'">调度器：'+(running?'<b>运行中</b>':'未启动')+
+    (runtime&&runtime.embedded?' · Web 内嵌线程':'')+
+    (runtime&&runtime.started_at?' · 自 '+esc(runtime.started_at):'')+
+    ' · 启用 '+(runtime&&runtime.enabled_count!=null?runtime.enabled_count: '-')+'/'+(runtime&&runtime.task_count!=null?runtime.task_count:list.length)+
+    (ROLE!=='guest'
+      ? (running
+        ? ' <button class="btn sm ghost" onclick="stopSchedRuntime()">停止内嵌</button>'
+        : ' <button class="btn sm" onclick="startSchedRuntime()">启动调度器</button>')
+      : '')+
+    '</div>'+
+    '<p class="muted" style="margin:0 0 10px">Windows 友好：Web 内嵌后台线程，或另开 <code>content_factory/start_scheduler.bat</code>（无需系统 cron）。</p>';
+  const rows=list.map(t=>'<tr><td>'+esc(t.id)+'</td><td>'+esc(t.name||t.action)+'</td><td><code>'+esc(t.cron||'')+'</code></td>'+
+    '<td>'+(t.enabled?'<span class="status-ok">启用</span>':'<span class="muted">停用</span>')+'</td><td>'+
+    (ROLE!=='guest'
+      ? '<button class="btn sm" onclick="toggleSched(\''+esc(t.id)+'\','+(!t.enabled)+')">'+(t.enabled?'停用':'启用')+'</button>'
+      : '-')+'</td></tr>').join('');
+  setHTML('factoryBody',statusBanner+card(
+    '<div class="table-wrap"><table><tr><th>ID</th><th>名称</th><th>Cron</th><th>状态</th><th></th></tr>'+
+    (rows||'<tr><td colspan=5 class=muted>无定时任务</td></tr>')+'</table></div>',
+    '定时任务'));
+}
+async function startSchedRuntime(){
+  try{
+    const r=await api('/api/schedule/start',{method:'POST',body:'{}'});
+    showToast(r.already?'调度器已在运行':'已启动内嵌调度器');
+    await fTabSchedule();
+  }catch(e){alert(e.message);}
+}
+async function stopSchedRuntime(){
+  try{
+    const r=await api('/api/schedule/stop',{method:'POST',body:'{}'});
+    if(r.error) showToast(r.error,'warn'); else showToast('已请求停止内嵌调度器');
+    await fTabSchedule();
+  }catch(e){alert(e.message);}
+}
+async function toggleSched(id,enabled){
+  try{await api('/api/schedule/toggle',{method:'POST',body:JSON.stringify({id,enabled})});await fTabSchedule();}
+  catch(e){alert(e.message);}
+}
+async function fTabQueue(){
+  const q=await api('/api/queue');
+  const load=q.load!=null?q.load:(q.pending!=null?q.pending:'-');
+  const pending=q.pending_tasks||q.tasks||q.queue||[];
+  const rows=(Array.isArray(pending)?pending:[]).map(t=>'<tr><td>'+esc(t.id||'')+'</td><td>'+esc(t.action||t.type||'')+'</td><td>'+esc(t.status||'pending')+'</td><td>'+esc(t.topic||JSON.stringify(t.params||{}).slice(0,40))+'</td></tr>').join('');
+  setHTML('factoryBody',card(
+    '<div class="metrics"><div class="metric"><b>'+esc(String(load))+'</b><span>当前负载 / 待处理</span></div>'+
+    '<div class="metric"><b>'+(Array.isArray(pending)?pending.length:0)+'</b><span>队列条目</span></div></div>'+
+    '<div class="table-wrap" style="margin-top:12px"><table><tr><th>ID</th><th>动作</th><th>状态</th><th>选题</th></tr>'+
+    (rows||'<tr><td colspan=4 class=muted>队列空闲</td></tr>')+'</table></div>'+
+    '<pre class="pre" style="margin-top:10px">'+esc(JSON.stringify(q,null,2))+'</pre>',
+    '任务队列'));
+}
+async function fTabBid(){
+  setHTML('factoryBody',
+    '<div class="banner ok">完整标书工作台已提升为侧栏模块 · <button class="btn sm" onclick="nav(\'bid\')">打开标书工作台</button></div>'+
+    card(
+      '<p class="muted">快捷：同步过审稿 → 知识库；拉取赛道 → 选题建议。详情/矩阵/导出请用侧栏「标书工作台」。</p>'+
+      (ROLE!=='guest'
+        ? '<button class="btn" onclick="bidSyncNow()">同步知识到标书</button> '+
+          '<button class="btn ghost" onclick="bidFetchThemesQuick()">拉取赛道选题</button> '+
+          '<button class="btn ghost" onclick="bidThemesToPool()">写入选题池</button>'
+        : '<p class="muted">只读</p>')+
+      '<div id="bidBox" style="margin-top:12px"></div>',
+      '标书 / 知识同步'));
+}
+async function bidSyncNow(){
+  setHTML('bidBox','<p class="muted">同步中…</p>');
+  try{
+    const r=await api('/api/bid/sync',{method:'POST',body:'{}'});
+    setHTML('bidBox','<div class="banner ok">已同步 '+esc(String(r.synced_count))+' 篇 → '+esc(r.target)+'</div><pre class="pre">'+esc(JSON.stringify(r,null,2))+'</pre>');
+  }catch(e){setHTML('bidBox','<p class="status-err">'+esc(e.message)+'</p>');}
+}
+async function bidFetchThemesQuick(){
+  setHTML('bidBox','<p class="muted">拉取中…</p>');
+  try{
+    const r=await api('/api/bid/themes');
+    const rows=(r.topic_suggestions||[]).map(s=>'<tr><td>'+esc(s.industry)+'</td><td>'+esc(s.topic)+'</td><td>'+esc(s.signal)+'</td></tr>').join('');
+    setHTML('bidBox','<div class="banner ok">来源 '+esc(r.source)+' · '+(r.themes||[]).length+' 赛道</div>'+
+      '<div class="table-wrap"><table><tr><th>赛道</th><th>选题建议</th><th>信号</th></tr>'+(rows||'<tr><td colspan=3 class=muted>无</td></tr>')+'</table></div>');
+  }catch(e){setHTML('bidBox','<p class="status-err">'+esc(e.message)+'</p>');}
+}
+async function bidThemesToPool(){
+  try{
+    const r=await api('/api/bid/themes_to_topics',{method:'POST',body:'{}'});
+    alert('已写入选题池 '+r.added_count+' 条');
+    setHTML('bidBox','<pre class="pre">'+esc(JSON.stringify(r,null,2))+'</pre>');
+  }catch(e){alert(e.message);}
+}
+async function runBid(action){
+  if(action==='sync_knowledge_to_bid') return bidSyncNow();
+  if(action==='fetch_bid_project_themes') return bidFetchThemesQuick();
+  setHTML('bidBox','<p class="muted">执行中…</p>');
+  try{
+    const r=await api('/api/run',{method:'POST',body:JSON.stringify({action,params:{}})});
+    setHTML('bidBox','<pre class="pre">'+esc(JSON.stringify(r,null,2))+'</pre>');
+  }catch(e){setHTML('bidBox','<p class="status-err">'+esc(e.message)+'</p>');}
+}
+
+let _bidWs={requirements:[],matrix:null,projectName:''};
+async function vBid(seq){
+  const st=await api('/api/bid/status');
+  const proj=await api('/api/bid/projects');
+  if(!viewAlive(seq)) return;
+  const hints=(st.hints||[]).map(h=>'<li>'+esc(h)+'</li>').join('');
+  const ds=proj.db_stats||st.db_stats||{};
+  const mode=proj.data_mode||st.data_mode||'';
+  const fallback=!!(proj.using_json_fallback||st.using_json_fallback);
+  const bannerText=proj.banner||st.banner||'';
+  let topBanner;
+  if(fallback){
+    topBanner='<div class="banner warn"><b>当前为本地回退，正在/请刷新真实标讯</b>'+
+      (bannerText&&bannerText!=='当前为本地回退，正在/请刷新真实标讯'?' · '+esc(bannerText):'')+
+      ' · 库行数 '+(ds.row_count==null?'?':ds.row_count)+'（real '+(ds.real_count||0)+'）'+
+      (st.last_refresh?' · 上次成功刷新 '+esc(st.last_refresh):'')+
+      (ROLE!=='guest'?' <button class="btn sm" onclick="bidRefreshReal(true)">刷新真实标讯</button>':'')+
+      '</div>';
+  }else if(mode==='real'){
+    topBanner='<div class="banner ok">真实标讯 · 来源 <code>'+esc(proj.source||'bid_telecom.db')+'</code> · '+
+      esc(String(proj.count||0))+' 条展示 / 库内 real '+(ds.real_count||0)+
+      (st.last_refresh?' · 刷新于 '+esc(st.last_refresh):'')+
+      (ROLE!=='guest'?' <button class="btn sm ghost" onclick="bidRefreshReal(true)">刷新真实标讯</button> <button class="btn sm ghost" onclick="bidRefreshStatus()">刷新状态</button>':'')+
+      '</div>';
+  }else{
+    topBanner='<div class="banner warn">标书库 · '+(mode==='db_demo'?'演示种子（请刷真实）':'本地')+
+      ' · 行数 '+(ds.row_count==null?'?':ds.row_count)+
+      (ROLE!=='guest'?' <button class="btn sm" onclick="bidRefreshReal(true)">刷新真实标讯</button>':'')+
+      (ROLE!=='guest'?' <button class="btn sm ghost" onclick="bidSeedDemo()">重写演示项目</button>':'')+
+      '</div>';
+  }
+  const rows=(proj.projects||[]).map(p=>{
+    const ind=esc(p.industry||p['赛道']||'');
+    const pname=esc(p.name||'');
+    const pid=esc(p.id||'');
+    return '<tr><td><code>'+pid+'</code></td><td>'+pname+'</td><td><span class="tag">'+ind+'</span></td><td>'+esc(p.region||'')+'</td><td>'+esc(p.budget_wan!=null?p.budget_wan+'万':'')+'</td><td>'+esc(p.status||'')+'</td><td>'+
+    (ROLE!=='guest'
+      ? '<button class="btn sm" onclick="bidStartCamp(\''+ind+'\',\'lead_gen\',\''+pname+'\',\''+pid+'\')">一键获客战役</button> '+
+        '<button class="btn sm ghost" onclick="bidStartCamp(\''+ind+'\',\'industry_brief\',\''+pname+'\',\''+pid+'\')">综述战役</button>'
+      : '-')+'</td></tr>';
+  }).join('');
+  setHTML('content',
+    topBanner+
+    (hints?'<ul class="muted" style="margin:0 0 12px;padding-left:18px">'+hints+'</ul>':'')+
+    '<div id="bidRefreshBox"></div>'+
+    card(
+      (ROLE!=='guest'
+        ? '<button class="btn" onclick="bidSyncNowMain()">正向同步（过审稿→知识库）</button> '+
+          '<button class="btn ghost" onclick="bidLoadThemes()">拉取赛道选题</button> '+
+          '<button class="btn ghost" onclick="bidThemesToPoolMain()">一键写入选题池</button> '+
+          '<button class="btn" onclick="bidRefreshReal(true)">刷新真实标讯</button>'
+        : '<p class="muted">只读账号可浏览项目与矩阵结果</p>')+
+      '<div id="bidMainBox" style="margin-top:12px"></div>',
+      '同步 / 赛道 → 选题')+
+    card(
+      '<p class="muted">优先 <code>bid_telecom.db</code>（REAL_*）；点「一键获客战役」把真实标讯项目名写入战役目标并打开看板。</p>'+
+      '<div class="table-wrap"><table><tr><th>ID</th><th>项目</th><th>赛道</th><th>地区</th><th>预算</th><th>状态</th><th>生成战役</th></tr>'+
+      (rows||'<tr><td colspan=7 class=muted>无项目 · 点「刷新真实标讯」或「重写演示项目」</td></tr>')+'</table></div>',
+      '项目清单 · 标讯→战役')+
+    card(
+      '<p class="muted">粘贴招标文本 → 要求清单 → 证据矩阵 → 导出材料包（封面+检查清单+矩阵）</p>'+
+      '<textarea id="tenderText" rows="6" placeholder="示例：投标人须具备等保证书；提供近三年同类云网项目业绩；提交技术方案、项目团队简历与售后响应承诺…"></textarea>'+
+      (ROLE!=='guest'
+        ? '<button class="btn" onclick="bidParseTender()">要求拆解</button> '+
+          '<button class="btn ghost" onclick="bidBuildMatrix()">生成证据矩阵</button> '+
+          '<button class="btn ghost" onclick="bidExportMatrix()">导出材料包 Word</button>'
+        : '')+
+      '<div id="bidWsBox" style="margin-top:12px"></div>',
+      '标书材料工作台')+
+    card('<p class="muted">知识库：<code>'+esc(st.knowledge_sync_folder)+'</code> · DB：<code>'+esc(st.telecom_db||'')+'</code> · 详见 docs/REAL_DATA.md</p>','配置'));
+}
+async function bidRefreshReal(quick){
+  if(ROLE==='guest'){alert('只读');return;}
+  setHTML('bidRefreshBox','<div class="banner warn">正在后台刷新真实标讯…</div>');
+  try{
+    const r=await api('/api/bid/refresh_real',{method:'POST',body:JSON.stringify({quick:!!quick})});
+    setHTML('bidRefreshBox','<div class="banner '+(r.started?'ok':'warn')+'">'+esc(r.message||JSON.stringify(r))+
+      ' <button class="btn sm ghost" onclick="bidRefreshStatus()">查看进度</button></div>');
+    if(r.started){
+      setTimeout(function(){ bidRefreshStatus(); }, 3000);
+    }
+  }catch(e){setHTML('bidRefreshBox','<p class="status-err">'+esc(e.message)+'</p>');}
+}
+async function bidRefreshStatus(){
+  try{
+    const r=await api('/api/bid/refresh_status');
+    const ds=r.db_stats||{};
+    const running=!!r.running;
+    setHTML('bidRefreshBox','<div class="banner '+(running?'warn':(r.ok?'ok':'warn'))+'">'+
+      (running?'抓取中':'已结束')+' · '+esc(r.message||r.phase||'')+
+      ' · 进度 '+(r.progress!=null?r.progress:'?')+'%'+
+      ' · 库 real='+(ds.real_count||0)+' / total='+(ds.row_count||0)+
+      (running?'':' <button class="btn sm" onclick="nav(\'bid\')">刷新列表</button>')+
+      '</div>');
+    if(running) setTimeout(function(){ bidRefreshStatus(); }, 4000);
+  }catch(e){setHTML('bidRefreshBox','<p class="status-err">'+esc(e.message)+'</p>');}
+}
+async function bidSeedDemo(){
+  try{
+    const r=await api('/api/bid/seed',{method:'POST',body:'{}'});
+    alert('演示项目已写入 '+r.count+' 条\n'+((r.ids||[]).join(', ')));
+    nav('bid');
+  }catch(e){alert(e.message);}
+}
+async function bidSyncNowMain(){
+  setHTML('bidMainBox','<p class="muted">同步中…</p>');
+  try{
+    const r=await api('/api/bid/sync',{method:'POST',body:'{}'});
+    setHTML('bidMainBox','<div class="banner ok">同步 '+esc(String(r.synced_count))+' 篇 → '+esc(r.target)+'</div>');
+  }catch(e){setHTML('bidMainBox','<p class="status-err">'+esc(e.message)+'</p>');}
+}
+async function bidLoadThemes(){
+  setHTML('bidMainBox','<p class="muted">拉取中…</p>');
+  try{
+    const r=await api('/api/bid/themes');
+    const rows=(r.topic_suggestions||[]).map(s=>'<tr><td>'+esc(s.industry)+'</td><td>'+esc(s.topic)+'</td><td>'+
+      (ROLE!=='guest'
+        ? '<button class="btn sm" onclick="bidStartCamp(\''+esc(s.industry)+'\',\'lead_gen\')">获客</button> '+
+          '<button class="btn sm ghost" onclick="bidStartCamp(\''+esc(s.industry)+'\',\'industry_brief\')">综述</button>'
+        : '-')+'</td></tr>').join('');
+    setHTML('bidMainBox','<div class="banner ok">来源 '+esc(r.source)+'</div>'+
+      '<div class="table-wrap"><table><tr><th>赛道</th><th>选题</th><th>战役</th></tr>'+rows+'</table></div>');
+  }catch(e){setHTML('bidMainBox','<p class="status-err">'+esc(e.message)+'</p>');}
+}
+async function bidThemesToPoolMain(){
+  try{
+    const r=await api('/api/bid/themes_to_topics',{method:'POST',body:'{}'});
+    alert('已写入选题池 '+r.added_count+' 条 · 可去内容工厂选题池查看');
+  }catch(e){alert(e.message);}
+}
+async function bidStartCamp(industry, template, projectName, projectId){
+  if(ROLE==='guest'){alert('只读');return;}
+  if(!industry){alert('无赛道');return;}
+  const box=$('bidMainBox')||$('bidRefreshBox');
+  if(box) box.innerHTML='<div class="banner warn">正在从标讯生成战役…</div>';
+  showToast('标讯 → 战役生成中…');
+  try{
+    const r=await api('/api/bid/theme_to_campaign',{method:'POST',body:JSON.stringify({
+      industry:industry, template:template||'lead_gen', auto_approve:false,
+      project_name:projectName||'', project_id:projectId||''
+    })});
+    const cid=r.campaign_id||'';
+    const isReal=String(projectId||'').indexOf('REAL_')===0;
+    showToast('已成军 '+cid+(isReal?' · 真实标讯':'')+' · 正在打开看板');
+    if(box) box.innerHTML='<div class="banner ok">已创建 <b>'+esc(cid)+'</b> · '+esc((r.goal||'').slice(0,80))+
+      ' <button class="btn sm" onclick="navHomeOpen(\''+esc(cid)+'\')">打开看板</button></div>';
+    await nav('home');
+    if(cid){
+      await openCamp(cid);
+      // 引导条：人审 → 产物 → Word（丝滑路径）
+      const panel=$('campPanel');
+      if(panel){
+        const guide=document.createElement('div');
+        guide.className='judge-guide';
+        guide.innerHTML='<b>标讯成军引导</b><span class="muted">'+esc((projectName||industry||'').slice(0,36))+'</span>'+
+          '<button type="button" class="btn sm" onclick="approve(\''+esc(cid)+'\')">① 人审通过</button>'+
+          '<button type="button" class="btn sm ghost" onclick="var d=$(\'artDrawer\');if(d)d.scrollIntoView({behavior:\'smooth\'})">② 产物抽屉</button>'+
+          '<button type="button" class="btn sm ghost" onclick="exportWord(\''+esc(cid)+'\')">③ 导出 Word</button>';
+        panel.insertBefore(guide, panel.firstChild);
+      }
+    }
+  }catch(e){
+    showToast(e.message||'成军失败','warn');
+    if(box) box.innerHTML='<p class="status-err">'+esc(e.message)+'</p>';
+    else alert(e.message);
+  }
+}
+async function bidParseTender(){
+  const text=(($('tenderText')&&$('tenderText').value)||'').trim();
+  if(!text){alert('请粘贴招标文本');return;}
+  setHTML('bidWsBox','<p class="muted">拆解中…</p>');
+  try{
+    const r=await api('/api/bid/workspace/parse',{method:'POST',body:JSON.stringify({text,use_llm:true})});
+    _bidWs.requirements=r.requirements||[];
+    _bidWs.matrix=null;
+    const rows=_bidWs.requirements.map(x=>'<tr><td>'+esc(x.id)+'</td><td>'+esc(x.title)+'</td><td>'+esc(x.priority)+'</td><td>'+esc(x.source)+'</td></tr>').join('');
+    setHTML('bidWsBox','<div class="banner ok">模式 '+esc(r.mode)+' · '+_bidWs.requirements.length+' 项 · 会话 '+esc(r.id)+'</div>'+
+      '<div class="table-wrap"><table><tr><th>ID</th><th>要求</th><th>优先级</th><th>来源</th></tr>'+rows+'</table></div>');
+  }catch(e){setHTML('bidWsBox','<p class="status-err">'+esc(e.message)+'</p>');}
+}
+async function bidBuildMatrix(){
+  if(!(_bidWs.requirements||[]).length){alert('请先「要求拆解」');return;}
+  setHTML('bidWsBox','<p class="muted">匹配知识库…</p>');
+  try{
+    const r=await api('/api/bid/workspace/matrix',{method:'POST',body:JSON.stringify({requirements:_bidWs.requirements})});
+    _bidWs.matrix=r;
+    const rows=(r.rows||[]).map(x=>'<tr><td>'+esc(x.requirement)+'</td><td>'+esc(x.priority)+'</td><td>'+
+      (x.status==='有证据'?'<span class="status-ok">有证据</span>':'<span class="status-warn">缺口</span>')+'</td><td>'+
+      esc((x.evidence||[]).map(e=>e.title||e.id).join('；')||'-')+'</td><td>'+esc(x.gap_action||'-')+'</td></tr>').join('');
+    setHTML('bidWsBox','<div class="banner ok">覆盖率 '+esc(String(r.coverage_pct))+'% · 扫描知识 '+esc(String(r.knowledge_scanned))+'</div>'+
+      '<div class="table-wrap"><table><tr><th>要求</th><th>优先级</th><th>状态</th><th>证据</th><th>缺口动作</th></tr>'+rows+'</table></div>');
+  }catch(e){setHTML('bidWsBox','<p class="status-err">'+esc(e.message)+'</p>');}
+}
+async function bidExportMatrix(){
+  if(!(_bidWs.requirements||[]).length){alert('请先拆解');return;}
+  try{
+    const r=await api('/api/bid/workspace/export_docx',{method:'POST',body:JSON.stringify({
+      requirements:_bidWs.requirements, matrix:_bidWs.matrix, project_name:_bidWs.projectName||''
+    })});
+    const resp=await fetch(r.download,{headers:{Authorization:'Bearer '+TOKEN}});
+    if(!resp.ok) throw new Error(await resp.text());
+    const blob=await resp.blob(); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=r.filename||'bid_matrix.docx';
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }catch(e){alert(e.message);}
+}
+
+async function vArtifacts(seq){
+  const d=await api('/api/artifacts/center');
+  if(!viewAlive(seq)) return;
+  const arts=(d.campaign_artifacts||[]).map(a=>'<tr><td>'+esc(a.campaign_id)+'</td><td>'+esc(a.campaign_goal)+'</td><td><span class="tag">'+esc(a.role)+'</span></td><td>'+esc(a.title)+'</td><td>'+
+    '<button class="btn sm" onclick="navHomeOpenArt(\''+esc(a.campaign_id)+'\',\''+esc(a.artifact_id)+'\')">打开产物</button> '+
+    '<button class="btn sm ghost" onclick="exportArtDocx(\''+esc(a.campaign_id)+'\',\''+esc(a.artifact_id)+'\')">导出 Word</button> '+
+    (ROLE!=='guest'?'<button class="btn sm ghost" onclick="pushCampArtBid(\''+esc(a.campaign_id)+'\',\''+esc(a.artifact_id)+'\')">推入标书</button>':'')+
+    '</td></tr>').join('');
+  const artsRows=(d.articles||[]).slice().reverse().slice(0,40).map(a=>'<tr><td>'+esc(a.id)+'</td><td>'+esc(a.title)+'</td><td>'+
+    '<button class="btn sm" onclick="navFactoryPreview(\''+esc(a.file||'')+'\',\''+esc(a.id)+'\')">预览</button> '+
+    '<button class="btn sm ghost" onclick="exportArticleDocx(\''+esc(a.id)+'\')">导出 Word</button> '+
+    (ROLE!=='guest'?'<button class="btn sm ghost" onclick="navFactoryWechat(\''+esc(a.id)+'\')">推送到公众号草稿</button> ':'')+
+    (ROLE!=='guest'?'<button class="btn sm ghost" onclick="pushArticleBid(\''+esc(a.id)+'\')">推入标书知识库</button>':'')+
+    '</td></tr>').join('');
+  setHTML('content',
+    card('<p class="muted">汇战役产物 + 内容工厂文章。评委演示：打开产物预览 → 导出 Word。</p>'+
+      '<div class="table-wrap"><table><tr><th>战役</th><th>目标</th><th>角色</th><th>标题</th><th>操作</th></tr>'+
+      (arts||'<tr><td colspan=5 class=muted>暂无战役产物 · 运行 <code>python scripts/seed_demo_week.py</code> 或打开样例战役</td></tr>')+'</table></div>','战役产物')+
+    card('<div class="table-wrap"><table><tr><th>ID</th><th>标题</th><th>操作</th></tr>'+
+      (artsRows||'<tr><td colspan=3 class=muted>暂无文章 · 演示周包 ART_DEMO_WEEK_*</td></tr>')+'</table></div>','内容工厂文章'));
+}
+async function navHomeOpenArt(cid, aid){
+  await nav('home');
+  if($('campPanel')){await openCamp(cid); await viewArt(cid, aid);}
+  else alert('看板未就绪');
+}
+async function navFactoryPreview(file, id){
+  await nav('factory');
+  await factoryTab('articles');
+  await previewArticle(file, id);
+}
+async function navFactoryWechat(aid){
+  await nav('factory');
+  await factoryTab('articles');
+  await pushWechatDraft(aid);
+}
+
+async function vNl2sql(seq){
+  const st=await api('/api/nl2sql/status');
+  if(!viewAlive(seq)) return;
+  const online=!!st.online;
+  const realN=st.real_count||0;
+  const fromJudge=!!window.__judgeNlPending || _judgeGuideOn;
+  const banner=online
+    ? '<div class="banner '+(realN?'ok':'warn')+'">智能问数 <b>在线</b>（MCP:'+(st.mcp?'✓':'×')+' · znws:'+(st.znws?'✓':'×')+
+      '）· 库行数 '+(st.row_count==null?'?':st.row_count)+'（real '+realN+' / demo '+(st.demo_count||0)+'）'+
+      (st.last_refresh?' · 最近刷新 '+esc(st.last_refresh):'')+
+      (realN?' — 真实库查询':' — 当前多为演示种子，请刷新真实标讯')+
+      (ROLE!=='guest'?' <button class="btn sm" onclick="bidRefreshReal(true);nav(\'bid\')">刷新真实标讯</button>':'')+
+      '</div>'
+    : '<div class="banner warn">智能问数 <b>离线</b> — '+esc(st.hint)+
+      ' <button class="btn sm" onclick="seedNl2sql()">写入演示库</button> '+
+      '<button class="btn sm ghost" onclick="showJudgeNlSample()">显示评委缓存样例表</button> '+
+      '<span class="muted">推荐 <code>scripts\\start_real_data.bat</code>；或 <code>scripts\\start_nl2sql_demo.bat</code></span></div>';
+  const cards=[
+    {q:'各行业中标项目数量和金额合计',t:'按行业汇总'},
+    {q:'按地区统计项目数量',t:'按地区统计'},
+    {q:'中标金额最高的前10个项目',t:'TOP10 金额'},
+    {q:'各月份项目数量趋势',t:'月度趋势'},
+    {q:'云计算相关项目有多少',t:'云计算赛道'},
+    {q:'杭州地区中标项目有哪些',t:'杭州标讯'},
+    {q:'网络安全相关项目数量和金额',t:'网络安全赛道'},
+    {q:'进行中的项目有多少',t:'在途项目'},
+  ];
+  const cardHtml='<div class="q-cards">'+cards.map(c=>
+    '<button type="button" class="q-card" onclick="setNlq(\''+esc(c.q).replace(/'/g,'&#39;')+'\');runNl2sql()">'+
+    '<b>'+esc(c.t)+'</b><div class="muted" style="margin-top:4px">'+esc(c.q)+'</div></button>'
+  ).join('')+'</div>';
+  const guide=fromJudge?judgeGuideHtml('问数页 · 在线则查库，离线则用缓存样例表'):'';
+  setHTML('content',
+    guide+banner+
+    card(
+      '<p class="muted">预设问题卡 · 命中 bid_telecom.db 聚合 · 点击即查</p>'+cardHtml+
+      '<div class="row"><div class="col"><label class="muted">自然语言问题</label>'+
+      '<textarea id="nlq">'+JUDGE_NL_Q+'</textarea></div></div>'+
+      '<button class="btn" onclick="runNl2sql()">查询</button> '+
+      '<button class="btn ghost" onclick="setNlq(\'按地区统计项目数量\')">样例·按地区</button> '+
+      '<button class="btn ghost" onclick="setNlq(\'各行业中标项目数量\')">样例·按行业</button> '+
+      '<button class="btn ghost" onclick="showJudgeNlSample()">缓存样例表</button> '+
+      '<button class="btn ghost" onclick="nav(\'bid\')">打开标书工作台</button>'+
+      '<div id="nlbox" style="margin-top:14px"></div>',
+      '智能问数看板')+
+    card('<p class="muted">数据参谋优先真实 NL2SQL。刷新：<code>scripts/refresh_real_bids.py --quick</code> · 启动：<code>scripts/start_real_data.bat</code> · 说明 docs/REAL_DATA.md</p>','说明'));
+  if(fromJudge){
+    window.__judgeNlPending=false;
+    if(online){ setTimeout(function(){ runNl2sql(); }, 80); }
+    else { showJudgeNlSample(); }
+  }
+}
+function showJudgeNlSample(){
+  const cols=JUDGE_NL_SAMPLE.columns||[];
+  const head='<tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr>';
+  const body=(JUDGE_NL_SAMPLE.rows||[]).map(row=>'<tr>'+(row||[]).map(x=>'<td>'+esc(x)+'</td>').join('')+'</tr>').join('');
+  setHTML('nlbox',
+    '<div class="banner warn">'+esc(JUDGE_NL_SAMPLE.note)+'</div>'+
+    '<p class="muted">预设问题：'+esc(JUDGE_NL_Q)+'</p>'+
+    '<div class="table-wrap"><table>'+head+body+'</table></div>'+
+    renderBarChart(cols, JUDGE_NL_SAMPLE.rows||[]));
+}
+function setNlq(t){const el=$('nlq'); if(el) el.value=t;}
+async function seedNl2sql(){
+  try{
+    const r=await api('/api/nl2sql/seed',{method:'POST',body:'{}'});
+    alert('演示库已就绪：'+r.row_count+' 行\n请再运行 scripts\\start_nl2sql_demo.bat 启动服务');
+    nav('nl2sql');
+  }catch(e){alert(e.message);}
+}
+function renderBarChart(cols, rows){
+  if(!cols||!rows||!rows.length) return '';
+  // 找第一个数值列
+  let labelIdx=0, valIdx=-1;
+  for(let j=0;j<cols.length;j++){
+    const n=Number(rows[0][j]);
+    if(!isNaN(n)&&rows[0][j]!==''&&rows[0][j]!=null){valIdx=j;break;}
+  }
+  if(valIdx<0) return '';
+  if(valIdx===0&&cols.length>1){labelIdx=1;}
+  const vals=rows.map(r=>Number(r[valIdx])||0);
+  const max=Math.max.apply(null,vals.concat([1]));
+  const bars=rows.slice(0,12).map(r=>{
+    const v=Number(r[valIdx])||0;
+    const pct=Math.round(v/max*100);
+    const label=String(r[labelIdx]!=null?r[labelIdx]:'').slice(0,16);
+    return '<div class="bar-row"><div>'+esc(label)+'</div><div class="bar-track"><div class="bar-fill" style="width:'+pct+'%"></div></div><div>'+esc(v)+'</div></div>';
+  }).join('');
+  return '<div class="bar-chart"><p class="muted">简易柱状图 · '+esc(cols[valIdx])+'</p>'+bars+'</div>';
+}
+async function runNl2sql(){
+  const q=(($('nlq')&&$('nlq').value)||'').trim();
+  if(!q){alert('请输入问题');return;}
+  setHTML('nlbox','<p class="muted">查询中…</p>');
+  try{
+    const r=await api('/api/nl2sql/query',{method:'POST',body:JSON.stringify({question:q})});
+    if(!r.ok){
+      setHTML('nlbox','<div class="banner warn">'+esc(r.error||'失败')+
+        (r.offline?' <button class="btn sm" onclick="seedNl2sql()">写入演示库</button>':'')+'</div>');
+      return;
+    }
+    const cols=r.columns||[];
+    const head='<tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr>';
+    const body=(r.rows||[]).map(row=>'<tr>'+(row||[]).map(x=>'<td>'+esc(x)+'</td>').join('')+'</tr>').join('');
+    setHTML('nlbox',
+      '<div class="banner ok">真实库结果 · 来源 '+esc(r.source)+' · 模式 '+esc(r.nl2sql_mode)+' · '+esc(r.row_count)+' 行</div>'+
+      '<p class="muted"><code>'+esc(r.sql||'')+'</code></p>'+
+      '<div class="table-wrap"><table>'+head+body+'</table></div>'+
+      renderBarChart(cols, r.rows||[]));
+  }catch(e){setHTML('nlbox','<p class="status-err">'+esc(e.message)+'</p>');}
+}
+async function vLogs(seq){
+  const l=asList(await api('/api/logs'));
+  if(!viewAlive(seq)) return;
+  setHTML('content',card('<div class="logbox">'+esc(l.join('\n'))+'</div><p class="muted" style="margin-top:8px">最近 150 条操作日志</p>','系统日志'));
+}
+async function vUsers(seq){
+  const r=asList(await api('/api/users'));
+  if(!viewAlive(seq)) return;
+  const isAdmin=ROLE==='super_admin';
+  const roleOpts=['super_admin','operator','user','guest'];
+  const rows=r.map(x=>{
+    let actions='';
+    if(isAdmin){
+      actions='<button class="btn sm '+(x.enabled?'danger':'')+'" onclick="adminToggle(\''+esc(x.username)+'\','+(!x.enabled)+')">'+
+        (x.enabled?'禁用':'启用')+'</button> '+
+        '<select onchange="adminRole(\''+esc(x.username)+'\',this.value)" style="width:auto;display:inline-block;padding:4px 8px">'+
+        roleOpts.map(ro=>'<option value="'+ro+'"'+(x.role===ro?' selected':'')+'>'+ro+'</option>').join('')+
+        '</select>';
+    }
+    return '<tr><td>'+esc(x.display_name||x.username)+'<div class="muted">'+esc(x.email||x.username)+'</div></td>'+
+      '<td>'+esc(x.role)+'</td><td>'+(x.enabled?'<span class="status-ok">启用</span>':'<span class="status-err">禁用</span>')+'</td>'+
+      (isAdmin?'<td>'+actions+'</td>':'')+'</tr>';
+  }).join('');
+  setHTML('content',card(
+    '<table><tr><th>用户</th><th>角色</th><th>状态</th>'+(isAdmin?'<th>管理</th>':'')+'</tr>'+rows+'</table>'+
+    '<p class="muted" style="margin-top:10px">'+(isAdmin
+      ?'超级管理员可启用/禁用与改角色。终端用户通过邮箱注册，role=user；评委 judge 为 guest 只读。'
+      :'终端用户请使用邮箱注册。角色变更需超级管理员操作。')+'</p>',
+    '权限管理'));
+}
+async function adminToggle(identity,enabled){
+  try{await api('/api/admin/user/enable',{method:'POST',body:JSON.stringify({identity,enabled})});nav('users');}
+  catch(e){alert(e.message);}
+}
+async function adminRole(identity,role){
+  try{await api('/api/admin/user/role',{method:'POST',body:JSON.stringify({identity,role})});}
+  catch(e){alert(e.message);nav('users');}
+}
+async function vInsights(seq){
+  if(ROLE!=='super_admin'){setHTML('content',card('<p class="status-err">仅超级管理员可查看</p>','用户洞察'));return;}
+  const usage=await api('/api/admin/usage');
+  if(!viewAlive(seq)) return;
+  const rows=(usage||[]).map(x=>'<tr style="cursor:pointer" onclick="selectInsightUser(\''+esc(x.username)+'\')">'+
+    '<td>'+esc(x.display_name||x.username)+'<div class="muted">'+esc(x.email)+'</div></td>'+
+    '<td>'+esc(x.role)+'</td>'+
+    '<td>'+esc(x.segment)+'</td>'+
+    '<td>'+(x.campaigns_started||0)+'</td>'+
+    '<td>'+(x.tasks_done||0)+'</td>'+
+    '<td>'+(x.logins||0)+'</td>'+
+    '<td>'+esc(x.last_login_at||'-')+'</td></tr>').join('');
+  setHTML('content',
+    card('<table><tr><th>用户</th><th>角色</th><th>画像</th><th>战役</th><th>任务</th><th>登录</th><th>最近登录</th></tr>'+
+      (rows||'<tr><td colspan=7 class=muted>暂无</td></tr>')+'</table>'+
+      '<p class="muted" style="margin-top:8px">点击行查看轨迹与画像详情</p>','使用情况')+
+    '<div id="insightDetail">'+card('<p class="muted">选择上方用户以查看轨迹与画像</p>','用户轨迹 / 画像分析')+'</div>');
+  if(_selUser) await loadInsightDetail(_selUser);
+}
+async function selectInsightUser(u){_selUser=u;await loadInsightDetail(u);}
+async function loadInsightDetail(identity){
+  if(!$('insightDetail')) return;
+  try{
+    const d=await api('/api/admin/trail/'+encodeURIComponent(identity)+'?limit=80');
+    const p=d.persona||{};
+    const ev=(d.events||[]).slice().reverse().map(e=>'<tr><td>'+esc(e.ts)+'</td><td>'+esc(e.action)+'</td><td><code>'+esc(JSON.stringify(e.meta||{}))+'</code></td></tr>').join('');
+    const tags=(p.tags||[]).map(t=>'<span class="tag">'+esc(t)+'</span>').join(' ');
+    setHTML('insightDetail',
+      card(
+        '<p><b>'+esc(p.username||identity)+'</b> · '+esc(p.email||'')+' · 画像 <span class="tag">'+esc(p.segment)+'</span> '+tags+'</p>'+
+        '<p class="muted" style="margin:8px 0">事件 '+((p.event_count)||0)+' · 最近 '+(esc(p.last_event_at||'-'))+'</p>'+
+        '<div class="row"><div class="col"><label class="muted">管理员备注</label><textarea id="personaNotes">'+(esc(p.notes||''))+'</textarea></div></div>'+
+        '<button class="btn sm" onclick="savePersonaNotes(\''+esc(identity)+'\')">保存备注</button>',
+        '画像分析')+
+      card('<table><tr><th>时间</th><th>动作</th><th>元数据</th></tr>'+(ev||'<tr><td colspan=3 class=muted>暂无轨迹</td></tr>')+'</table>','用户轨迹'));
+  }catch(e){
+    setHTML('insightDetail',card('<p class="status-err">'+esc(e.message)+'</p>','加载失败'));
+  }
+}
+async function savePersonaNotes(identity){
+  const notes=($('personaNotes')&&$('personaNotes').value)||'';
+  try{
+    await api('/api/admin/user/profile',{method:'POST',body:JSON.stringify({identity,notes})});
+    alert('已保存');
+    await loadInsightDetail(identity);
+  }catch(e){alert(e.message);}
+}
+// 登录前即拉取健康检查：刷新模型徽章 + 动态登录文案（失败不静默）
+refreshBadge().catch(function(e){ console.error(e); var t=$('modelText'); if(t) t.textContent='健康检查失败'; });
 </script>
 </body>
 </html>

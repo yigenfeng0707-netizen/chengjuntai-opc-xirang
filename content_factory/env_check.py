@@ -87,19 +87,46 @@ def check_port_conflict():
 
 
 def check_bid_pipeline():
-    """6. 检测 BidAutoPipeline 目录是否存在，缺失告警"""
+    """6. 检测 BidAutoPipeline：优先 bid_telecom.db，其次本地 demo 清单"""
+    bid_root = ""
     try:
         import yaml
         cfg_path = os.path.join(ROOT, "config.yaml")
         with open(cfg_path, "r", encoding="utf-8") as f:
-            cfg = yaml.safe_load(f)
-        bid_root = cfg.get("bid_pipeline_root", "")
+            cfg = yaml.safe_load(f) or {}
+        bid_root = (cfg.get("bid_pipeline_root") or "").strip()
     except Exception:
-        bid_root = "D:/work/BidAutoPipeline"
-    exists = os.path.isdir(bid_root) if bid_root else False
-    # 缺失只告警不阻断
-    return {"item": "BidAutoPipeline目录", "value": bid_root,
-            "pass": True, "fix": "" if exists else f"告警:标书系统目录不存在[{bid_root}]，双向联动功能将降级为本地模拟"}
+        bid_root = ""
+    telecom_db = os.path.join(os.path.dirname(ROOT), "bid_telecom.db")
+    if os.path.exists(telecom_db):
+        try:
+            import sqlite3
+            n = sqlite3.connect(telecom_db).execute("SELECT COUNT(*) FROM bid_projects").fetchone()[0]
+            if n > 0:
+                return {
+                    "item": "BidAutoPipeline目录",
+                    "value": f"bid_telecom.db:{n}行",
+                    "pass": True,
+                    "fix": "主路径为真实/缓存库；刷新: python scripts/refresh_real_bids.py --quick",
+                }
+        except Exception:
+            pass
+    local_demo = os.path.join(ROOT, "data", "bid_projects.json")
+    if bid_root and os.path.isdir(bid_root):
+        return {"item": "BidAutoPipeline目录", "value": bid_root, "pass": True, "fix": ""}
+    if os.path.exists(local_demo):
+        return {
+            "item": "BidAutoPipeline目录",
+            "value": f"本地demo:{local_demo}",
+            "pass": True,
+            "fix": "DB 空时回落 JSON；请运行 scripts/refresh_real_bids.py 或 start_real_data.bat",
+        }
+    return {
+        "item": "BidAutoPipeline目录",
+        "value": bid_root or "(空)",
+        "pass": True,
+        "fix": "告警:可运行 python scripts/refresh_real_bids.py --quick",
+    }
 
 
 def check_dependencies():
@@ -128,7 +155,7 @@ def check_nl2sql_service():
         fix = ""
     except OSError:
         ok = False
-        fix = "NL2SQL MCP服务(8765)未运行，数据回流查询投标历史将降级；启动: 双击 ../start_mcp.bat"
+        fix = "NL2SQL MCP服务(8765)未运行，数据回流查询投标历史将降级；启动: 双击 ../scripts/start_nl2sql_demo.bat"
     return {"item": "NL2SQL联动服务", "value": "在线" if ok else "离线", "pass": True, "fix": fix}
 
 

@@ -85,7 +85,12 @@ def init_db():
     count = cur.fetchone()[0]
     conn.close()
     if count == 0:
-        print(f"[警告] 数据库为空（{count} 条记录），请运行: python fetch_real_data.py --full-rebuild")
+        try:
+            from seed_demo_db import ensure_demo_db
+            info = ensure_demo_db(DB_PATH)
+            print(f"[ok] 演示库已写入 {info.get('row_count')} 条样本（亦可 python fetch_real_data.py --full-rebuild）")
+        except Exception as ex:
+            print(f"[警告] 数据库为空且自动种子失败: {ex}；请运行: python seed_demo_db.py")
 
 
 def write_backend_log(action, payload, result_summary):
@@ -270,7 +275,22 @@ def parse_question_to_sql(question: str, chart_type: str = "table", user_id: str
 # ========== API 接口 ==========
 @app.route("/health")
 def health():
-    return jsonify({"status": "ok"})
+    try:
+        from fetch_real_data import db_stats
+        stats = db_stats()
+    except Exception:
+        conn = get_conn()
+        cnt = conn.execute("SELECT COUNT(*) FROM bid_projects").fetchone()[0]
+        conn.close()
+        stats = {"row_count": cnt, "real_count": None, "demo_count": None, "last_refresh": None}
+    return jsonify({
+        "status": "ok",
+        "row_count": stats.get("row_count"),
+        "real_count": stats.get("real_count"),
+        "demo_count": stats.get("demo_count"),
+        "last_refresh": stats.get("last_refresh") or stats.get("mtime"),
+        "db_path": DB_PATH,
+    })
 
 
 @app.route("/api/v1/dataset/list", methods=["GET"])
@@ -282,9 +302,9 @@ def dataset_list():
         "datasets": [
             {
                 "name": DATASET_NAME,
-                "description": "电信投标项目数据集（演示数据：2025全年+2026上半年）",
+                "description": "浙江政采网通信/信息化投标项目（优先真实；空库可演示种子）",
                 "row_count": cnt,
-                "owner": "demo"
+                "owner": "real"
             }
         ]
     }

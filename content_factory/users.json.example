@@ -2,22 +2,29 @@
   "users": [
     {
       "username": "admin",
-      "password": "CHANGE_ME",
+      "password": "CHANGE_ME_ADMIN",
       "role": "super_admin",
       "enabled": true,
-      "created_at": "2026-07-27"
+      "created_at": "2026-07-29"
     },
     {
       "username": "operator",
-      "password": "CHANGE_ME",
+      "password": "CHANGE_ME_OPS",
       "role": "operator",
       "enabled": true,
-      "created_at": "2026-07-27"
+      "created_at": "2026-07-29"
+    },
+    {
+      "username": "judge",
+      "password": "CHANGE_ME_JUDGE",
+      "role": "guest",
+      "enabled": true,
+      "created_at": "2026-07-29"
     }
   ],
   "roles": {
     "super_admin": ["*"],
     "operator": ["run_task", "view", "export", "queue_control", "schedule_control"],
-    "guest": ["view"]
+    "guest": ["view", "export"]
   }
 }
