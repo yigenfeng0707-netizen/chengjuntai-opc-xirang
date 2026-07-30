@@ -77,6 +77,31 @@ scripts\start_real_data.bat
 | UI 横幅本地回退 | 点「刷新真实标讯」或跑 refresh 脚本 |
 | 问数离线 | `start_real_data.bat` 或分别启动 `znws_query_mock.py` / `mcp_http_nl2sql_v3.py` |
 
+
+
+## 抓取旋钮（抬高 real 量）
+
+首页 `searchHome` **忽略分页参数**（每区县约 20 条首屏）。量级靠 `/portal/category`：
+
+| 参数 | 默认 | 说明 |
+|------|------|------|
+| `--max-pages` | 6 | 每关键词 × 公告类型最大页数 |
+| `--page-size` | 50 | 每页条数 |
+| `--days-back` | 730 | `publishDateBegin/End` 回溯天数 |
+| `SEARCH_KEYWORDS` | ~30 词 | 信息化/通信等高产词，见 `fetch_real_data.py` |
+| `--skip-detail` | off | 跳过详情金额，加快增量入库 |
+| `--quick` | — | 仅 12 区县 searchHome 首屏（冒烟，不跑 category） |
+
+```bat
+REM 增量抬量（推荐，保留已有 real 行）
+python scripts\refresh_real_bids.py --skip-detail --max-pages 6 --page-size 50 --days-back 730
+
+REM 默认全量关键词分页（等同上面默认旋钮）
+python scripts\refresh_real_bids.py --skip-detail
+```
+
+最近一次成功刷新后：以 `db_stats()` / `logs/fetch_meta.json` 为准（目标 real≥200）。
+
 ## Smoke
 
 ```powershell

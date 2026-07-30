@@ -11,7 +11,7 @@
 
 | 事项 | 状态 | 说明 |
 |------|------|------|
-| 真实标讯刷新 | **已完成** | `python scripts/refresh_real_bids.py --timeout 900` → real≈82 / demo≈12 / rows≈94（以 `db_stats()` 为准） |
+| 真实标讯刷新 | **已完成** | `python scripts/refresh_real_bids.py --timeout 900` → real≈382 / demo≈12 / rows≈394（以 `db_stats()` 为准） |
 | GitHub 成军台仓库 | **已创建并推送** | 见 README 顶部仓库链接；旧底座 `nl2sql-teleagent` 保留为 legacy |
 | Demo 公网 URL | **待你** | 依赖天翼云 ECS；本地 Demo 仍为 `http://127.0.0.1:8090` |
 | 星辰/息壤 Token | **待你审批** | Agent 不编造 Key |

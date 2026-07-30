@@ -37,6 +37,7 @@ META_PATH = os.path.join(BASE_DIR, "logs", "fetch_meta.json")
 STATUS_PATH = os.path.join(BASE_DIR, "logs", "fetch_status.json")
 
 API_URL = "https://zfcg.czt.zj.gov.cn/portal/searchHome"
+CATEGORY_API = "https://zfcg.czt.zj.gov.cn/portal/category"
 DISTRICT_API = "https://zfcg.czt.zj.gov.cn/api/core/getSubDistrictByPid"
 HEADERS = {
     "Content-Type": "application/json",
@@ -57,6 +58,18 @@ MAX_RETRIES = 3
 
 SUBCODES = {"project": "110-306476", "result": "110-188043"}
 
+# /portal/category supports pageNo/pageSize/keyword; searchHome is first-page only
+DEFAULT_PAGE_SIZE = 50
+DEFAULT_MAX_PAGES = 6
+DEFAULT_DAYS_BACK = 730
+SEARCH_KEYWORDS = [
+    "信息化", "信息系统", "软件", "网络安全", "云计算", "通信",
+    "5G", "智慧城市", "数据中心", "机房", "视频监控", "物联网",
+    "数字政府", "电子政务", "大数据", "服务器", "弱电", "综合布线",
+    "人工智能", "智慧校园", "远程医疗", "数字乡村", "融媒体", "区块链",
+    "等保", "态势感知", "云平台", "政务云", "雪亮工程", "城市大脑",
+]
+
 # 通信/信息化关键词 -> 行业分类
 INDUSTRY_KEYWORDS = {
     "通信工程": ["通信工程", "通信设施", "通信线路", "光纤", "光缆", "宽带", "基站",
@@ -68,7 +81,13 @@ INDUSTRY_KEYWORDS = {
                   "软件采购", "系统集成", "数据治理", "大数据", "数据平台", "数据库",
                   "智能化", "IT", "运维", "运维服务", "维保", "数字档案", "电子证照",
                   "政务大厅", "一网通办", "最多跑一次", "数据交换", "数据共享",
-                  "中间件", "OA", "ERP", "财务系统", "审批系统", "电子招投标"],
+                  "中间件", "OA", "ERP", "财务系统", "审批系统", "电子招投标",
+                  "信息化设备",
+                  "信息中心",
+                  "软硬件",
+                  "系统建设",
+                  "系统运维",
+                  "数字化转型"],
     "云服务": ["云平台", "云计算", "云服务", "云资源", "云主机", "云存储",
               "政务云", "公有云", "私有云", "混合云", "云迁移", "云托管",
               "容器云", "微服务", "DevOps", "云网融合"],
@@ -581,87 +600,219 @@ def get_all_districts():
     return all_districts
 
 
-def fetch_all(max_districts=None, skip_detail=False):
-    """抓取区县的通信类项目。max_districts 用于快速冒烟；skip_detail 跳过金额详情。"""
-    write_status(
-        running=True, phase="districts", message="获取浙江省区县代码…",
-        progress=0, fetched=0, error=None,
-    )
-    log("获取浙江省区县代码...")
-    districts = get_all_districts()
-    if not districts:
-        write_status(running=False, phase="failed", message="区县列表为空/站点不可达", ok=False)
-        return []
-    items = list(districts.items())
-    if max_districts and max_districts > 0:
-        items = items[:max_districts]
-        log(f"快速模式: 仅抓取前 {len(items)} / {len(districts)} 个区县")
-    log(f"共 {len(items)} 个区县待抓取")
+def _ms_to_date(ms):
+    """publishDate 毫秒时间戳 -> YYYY-MM-DD"""
+    try:
+        if ms is None or ms == "":
+            return ""
+        if isinstance(ms, str) and len(ms) >= 10 and ms[4] == "-":
+            return ms[:10]
+        val = int(ms)
+        if val > 10_000_000_000:
+            val = val / 1000.0
+        return datetime.datetime.fromtimestamp(val).strftime("%Y-%m-%d")
+    except Exception:
+        return ""
+
+
+def fetch_category_page(category_code, page_no=1, page_size=50, keyword=None,
+                        date_begin=None, date_end=None, district_code=None):
+    """分页拉取 /portal/category（支持 keyword / 日期区间）。"""
+    payload = {
+        "pageNo": int(page_no),
+        "pageSize": int(page_size),
+        "categoryCode": category_code,
+    }
+    if keyword:
+        payload["keyword"] = keyword
+    if date_begin:
+        payload["publishDateBegin"] = date_begin
+    if date_end:
+        payload["publishDateEnd"] = date_end
+    if district_code:
+        payload["districtCode"] = district_code
+    resp = _request_with_retry("POST", CATEGORY_API, json=payload, timeout=30)
+    if resp is None or resp.status_code != 200:
+        return [], 0
+    try:
+        data = resp.json().get("result", {}).get("data", {}) or {}
+        rows = data.get("data") or []
+        total = int(data.get("total") or 0)
+        return rows, total
+    except Exception as e:
+        log(f"  [ERROR] parse category: {e}")
+        return [], 0
+
+
+def _notice_to_project(n, sub_type, skip_detail=False, dist_hint=""):
+    """将公告条目转为项目 dict；不匹配行业则返回 None。"""
+    title = n.get("title") or ""
+    if not any(kw in title for kw in ALL_KEYWORDS):
+        return None
+    industry = classify_industry(title)
+    if not industry:
+        return None
+    aid = n.get("articleId", "")
+    if skip_detail:
+        real_amount = estimate_amount(title, n.get("purchaseMethod") or "其他")
+        proj_code, proj_name = "", ""
+        amount_source = "估算"
+    else:
+        real_amount, proj_code, proj_name = fetch_detail_amount(aid)
+        if real_amount is None:
+            real_amount = estimate_amount(title, n.get("purchaseMethod") or "其他")
+            amount_source = "估算"
+        else:
+            amount_source = "详情页"
+
+    final_name = proj_name if proj_name else extract_project_name(title)
+    bid_date = n.get("publishDateString") or _ms_to_date(n.get("publishDate"))
+    dist_name = n.get("districtName") or dist_hint or ""
+    return {
+        "project_name": final_name,
+        "industry": industry,
+        "region": normalize_region(dist_name, dist_hint or dist_name),
+        "bid_date": bid_date,
+        "win_amount": real_amount,
+        "status": "中标" if sub_type == "result" else "进行中",
+        "purchase_method": n.get("purchaseMethod") or "",
+        "purchaser": n.get("purchaseName") or n.get("author") or "",
+        "project_code": proj_code,
+        "amount_source": amount_source,
+        "article_id": aid,
+        "title": title,
+        "source": "浙江政采网",
+    }
+
+
+def fetch_all(max_districts=None, skip_detail=False, max_pages=None, page_size=None,
+              days_back=None, keywords=None, use_district_crawl=False):
+    """优先用 /portal/category 关键词分页抓取；可选补充区县 searchHome 首屏。
+
+    max_districts: 兼容旧 quick 模式；>0 时强制走区县首屏且限制数量。
+    max_pages / page_size / days_back / keywords: 抬高真实标讯量的主旋钮。
+    """
+    page_size = int(page_size or DEFAULT_PAGE_SIZE)
+    max_pages = int(max_pages if max_pages is not None else DEFAULT_MAX_PAGES)
+    days_back = int(days_back if days_back is not None else DEFAULT_DAYS_BACK)
+    kw_list = list(keywords) if keywords else list(SEARCH_KEYWORDS)
+
+    end_d = datetime.date.today()
+    begin_d = end_d - datetime.timedelta(days=max(days_back, 30))
+    date_begin = begin_d.isoformat()
+    date_end = end_d.isoformat()
 
     seen_ids = set()
     all_projects = []
 
-    for i, (dist_name, dist_code) in enumerate(items):
-        if i % 10 == 0 or i == len(items) - 1:
-            pct = int(100 * i / max(len(items), 1))
-            log(f"进度: {i}/{len(items)} (已获取: {len(all_projects)}条)")
-            write_status(
-                running=True, phase="crawl", progress=pct,
-                message=f"抓取 {dist_name} ({i}/{len(items)})",
-                fetched=len(all_projects), district=dist_name,
-            )
-        for sub_type, sub_code in SUBCODES.items():
-            notices = fetch_notices(sub_code, dist_code)
-            for n in notices:
-                aid = n.get("articleId", "")
-                if aid in seen_ids:
-                    continue
-                seen_ids.add(aid)
-                title = n.get("title", "")
-                if not any(kw in title for kw in ALL_KEYWORDS):
-                    continue
-                industry = classify_industry(title)
-                if not industry:
-                    continue
+    # quick / 兼容：仅区县首屏
+    if max_districts and max_districts > 0:
+        use_district_crawl = True
+        kw_list = []
+        log(f"快速/限区县模式: max_districts={max_districts}, 跳过 category 关键词分页")
 
-                if skip_detail:
-                    real_amount = estimate_amount(title, n.get("purchaseMethod", "其他"))
-                    proj_code, proj_name = "", ""
-                    amount_source = "估算"
-                else:
-                    real_amount, proj_code, proj_name = fetch_detail_amount(aid)
-                    if real_amount is None:
-                        real_amount = estimate_amount(title, n.get("purchaseMethod", "其他"))
-                        amount_source = "估算"
-                    else:
-                        amount_source = "政采网"
+    if kw_list:
+        write_status(
+            running=True, phase="category", message="关键词分页抓取浙江政采…",
+            progress=0, fetched=0, error=None,
+        )
+        log(
+            f"category 抓取: keywords={len(kw_list)}, max_pages={max_pages}, "
+            f"page_size={page_size}, days={date_begin}~{date_end}"
+        )
+        total_steps = max(len(kw_list) * len(SUBCODES), 1)
+        step = 0
+        stop = False
+        for kw in kw_list:
+            if stop:
+                break
+            for sub_type, sub_code in SUBCODES.items():
+                if stop:
+                    break
+                step += 1
+                pct = int(100 * step / total_steps * 0.85)
+                write_status(
+                    running=True, phase="category", progress=pct,
+                    message=f"关键词 [{kw}] {sub_type}",
+                    fetched=len(all_projects), keyword=kw,
+                )
+                for page in range(1, max_pages + 1):
+                    notices, total = fetch_category_page(
+                        sub_code, page_no=page, page_size=page_size,
+                        keyword=kw, date_begin=date_begin, date_end=date_end,
+                    )
+                    if not notices:
+                        break
+                    new_on_page = 0
+                    for n in notices:
+                        aid = n.get("articleId", "")
+                        if not aid or aid in seen_ids:
+                            continue
+                        seen_ids.add(aid)
+                        proj = _notice_to_project(n, sub_type, skip_detail=skip_detail)
+                        if proj:
+                            all_projects.append(proj)
+                            new_on_page += 1
+                    log(
+                        f"  [{kw}/{sub_type}] page {page}/{max_pages}: "
+                        f"raw={len(notices)} new_match={new_on_page} "
+                        f"total_match={len(all_projects)} api_total={total}"
+                    )
+                    time.sleep(random.uniform(*LIST_SLEEP))
+                    if len(notices) < page_size:
+                        break
+                    if len(all_projects) >= 280:
+                        log(f"已达抓取目标缓冲 {len(all_projects)}，提前结束关键词循环")
+                        stop = True
+                        break
 
-                final_name = proj_name if proj_name else extract_project_name(title)
+    if use_district_crawl:
+        write_status(
+            running=True, phase="districts", message="补充抓取区县首屏…",
+            progress=88, fetched=len(all_projects), error=None,
+        )
+        log("获取浙江省区县代码（补充）...")
+        districts = get_all_districts()
+        if districts:
+            items = list(districts.items())
+            if max_districts and max_districts > 0:
+                items = items[:max_districts]
+                log(f"限制模式: 仅抓取前 {len(items)} / {len(districts)} 个区县")
+            log(f"共 {len(items)} 个区县补充抓取")
+            for i, (dist_name, dist_code) in enumerate(items):
+                if i % 10 == 0 or i == len(items) - 1:
+                    log(f"进度: {i}/{len(items)} (已获取: {len(all_projects)}条)")
+                    write_status(
+                        running=True, phase="crawl", progress=90,
+                        message=f"抓取 {dist_name} ({i}/{len(items)})",
+                        fetched=len(all_projects), district=dist_name,
+                    )
+                for sub_type, sub_code in SUBCODES.items():
+                    notices = fetch_notices(sub_code, dist_code)
+                    for n in notices:
+                        aid = n.get("articleId", "")
+                        if not aid or aid in seen_ids:
+                            continue
+                        seen_ids.add(aid)
+                        if not n.get("publishDateString") and n.get("publishDate"):
+                            n = dict(n)
+                            n["publishDateString"] = _ms_to_date(n.get("publishDate"))
+                        proj = _notice_to_project(
+                            n, sub_type, skip_detail=skip_detail, dist_hint=dist_name
+                        )
+                        if proj:
+                            all_projects.append(proj)
+                    time.sleep(random.uniform(*LIST_SLEEP))
+        else:
+            log("[WARN] 区县列表为空，跳过补充抓取")
 
-                all_projects.append({
-                    "project_name": final_name,
-                    "industry": industry,
-                    "region": normalize_region(n.get("districtName", ""), dist_name),
-                    "bid_date": n.get("publishDateString", ""),
-                    "win_amount": real_amount,
-                    "status": "中标" if sub_type == "result" else "进行中",
-                    "purchase_method": n.get("purchaseMethod", ""),
-                    "purchaser": n.get("purchaseName", ""),
-                    "project_code": proj_code,
-                    "amount_source": amount_source,
-                    "article_id": aid,
-                    "title": title,
-                    "source": "浙江政采网",
-                })
-            time.sleep(random.uniform(*LIST_SLEEP))
-
-    real_cnt = sum(1 for p in all_projects if p.get("amount_source") == "政采网")
+    real_cnt = sum(1 for p in all_projects if p.get("amount_source") == "详情页")
     est_cnt = len(all_projects) - real_cnt
     log(f"抓取完成: 去重后 {len(seen_ids)} 条公告, 通信类 {len(all_projects)} 条")
     log(f"  真实金额: {real_cnt}条, 估算金额: {est_cnt}条")
     write_status(
         running=True, phase="import", progress=95,
-        message=f"抓取完成 {len(all_projects)} 条，准备导入",
+        message=f"抓取完成 {len(all_projects)} 条，准备入库",
         fetched=len(all_projects),
     )
     return all_projects
@@ -706,7 +857,7 @@ def import_to_db(projects, full_rebuild=False):
     return {"inserted": inserted, "total": total, "real_count": real_n}
 
 
-def run_fetch(full_rebuild=False, fetch_only=False, max_districts=None, skip_detail=False):
+def run_fetch(full_rebuild=False, fetch_only=False, max_districts=None, skip_detail=False, max_pages=None, page_size=None, days_back=None, keywords=None, use_district_crawl=False):
     """可编程入口：供 scripts/refresh_real_bids.py 与 Web API 调用。"""
     started = datetime.datetime.now().isoformat(timespec="seconds")
     write_status(
@@ -716,13 +867,18 @@ def run_fetch(full_rebuild=False, fetch_only=False, max_districts=None, skip_det
     write_meta(last_attempt=started)
     log("=" * 50)
     log(
-        f"浙江政采网数据抓取 (full_rebuild={full_rebuild}, fetch_only={fetch_only}, "
-        f"max_districts={max_districts}, skip_detail={skip_detail})"
+        f"浙江政采网真实抓取 (full_rebuild={full_rebuild}, fetch_only={fetch_only}, "
+        f"max_districts={max_districts}, skip_detail={skip_detail}, "
+        f"max_pages={max_pages}, page_size={page_size}, days_back={days_back})"
     )
     log("=" * 50)
 
     try:
-        projects = fetch_all(max_districts=max_districts, skip_detail=skip_detail)
+        projects = fetch_all(
+            max_districts=max_districts, skip_detail=skip_detail,
+            max_pages=max_pages, page_size=page_size, days_back=days_back,
+            keywords=keywords, use_district_crawl=use_district_crawl,
+        )
         os.makedirs(os.path.dirname(JSON_PATH), exist_ok=True)
         with open(JSON_PATH, "w", encoding="utf-8") as f:
             json.dump(projects, f, ensure_ascii=False, indent=2)
@@ -809,7 +965,11 @@ def main(argv=None):
     parser.add_argument("--fetch-only", action="store_true", help="仅抓取写 JSON，不导入 DB")
     parser.add_argument("--max-districts", type=int, default=0, help="限制区县数（冒烟/快速）")
     parser.add_argument("--skip-detail", action="store_true", help="跳过详情金额 API，加快抓取")
-    parser.add_argument("--quick", action="store_true", help="等价于 --max-districts 12 --skip-detail")
+    parser.add_argument("--quick", action="store_true", help="快速：12 区县首屏 + skip-detail（不跑 category 大页）")
+    parser.add_argument("--max-pages", type=int, default=0, help="category 每关键词最大页数（默认 6）")
+    parser.add_argument("--page-size", type=int, default=0, help="category 每页条数（默认 50）")
+    parser.add_argument("--days-back", type=int, default=0, help="发布日起始回溯天数（默认 730）")
+    parser.add_argument("--with-districts", action="store_true", help="在关键词分页之外再补区县 searchHome 首屏")
     args = parser.parse_args(argv)
     max_d = args.max_districts or (12 if args.quick else None)
     skip = args.skip_detail or args.quick
@@ -818,6 +978,10 @@ def main(argv=None):
         fetch_only=args.fetch_only,
         max_districts=max_d,
         skip_detail=skip,
+        max_pages=args.max_pages or None,
+        page_size=args.page_size or None,
+        days_back=args.days_back or None,
+        use_district_crawl=args.with_districts,
     )
 
 

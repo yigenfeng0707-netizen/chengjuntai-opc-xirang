@@ -33,6 +33,10 @@ def main(argv=None):
     parser.add_argument("--skip-detail", action="store_true")
     parser.add_argument("--quick", action="store_true", help="快速冒烟：12 区县 + skip-detail")
     parser.add_argument("--timeout", type=int, default=0, help="秒；超时后仍保留已写入数据，标记失败")
+    parser.add_argument("--max-pages", type=int, default=0, help="category 每关键词最大页数")
+    parser.add_argument("--page-size", type=int, default=0, help="category 每页条数")
+    parser.add_argument("--days-back", type=int, default=0, help="发布日回溯天数")
+    parser.add_argument("--with-districts", action="store_true", help="额外补区县首屏")
     args = parser.parse_args(argv)
 
     max_d = args.max_districts or (12 if args.quick else None)
@@ -54,6 +58,10 @@ def main(argv=None):
             fetch_only=args.fetch_only,
             max_districts=max_d,
             skip_detail=skip,
+            max_pages=args.max_pages or None,
+            page_size=args.page_size or None,
+            days_back=args.days_back or None,
+            use_district_crawl=args.with_districts,
         )
 
     if args.timeout and args.timeout > 0:
