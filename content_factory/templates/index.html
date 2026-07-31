@@ -114,7 +114,8 @@ textarea{min-height:88px;resize:vertical}
     <span>息壤育智 · 一人成军｜OPC OS on 息壤</span>
   </div>
   <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
-    <div class="badge" id="modelBadge"><span class="dot"></span><span id="modelText">模型检测中…</span></div>
+    <div class="badge" id="modelBadge" title="模型与进程内累计 Token"><span class="dot"></span><span id="modelText">模型检测中…</span></div>
+    <div class="badge" id="tokenBadge" title="本进程累计 LLM Token（网关返回 usage 时累加）"><span class="dot"></span><span id="tokenText">Token …</span></div>
     <div class="badge" id="mcpBadge" title="stdio MCP：战役 + 内容工厂（见 README / mcp.json）"><span class="dot"></span><span id="mcpText">MCP…</span></div>
     <div class="muted" id="userBox" style="color:#cbd5e1">未登录</div>
   </div>
@@ -330,15 +331,48 @@ function updateLoginCopy(h){
     pwdBanner='<div class="banner warn"><b>公网部署安全提醒</b>：演示账号仍启用 — 请立即修改 admin/operator 默认密码（docs/PROD_HARDENING.md）。评委账号可保留只读，勿用弱密做管理员。</div>';
   }
   if(hasKey){
-    sub.textContent=base+'已接入过渡模型，可发起战役';
-    if(ban) ban.innerHTML=pwdBanner+'<div class="banner ok">过渡模型已就绪（'+esc((llm.active_name||llm.providers[0].name)||'')+' / '+esc((llm.active_model||llm.providers[0].model)||'')+'）· 可用邮箱登录发起战役</div>';
+    const an=(llm.active_name||(llm.providers[0]&&llm.providers[0].name)||'');
+    const am=(llm.active_model||(llm.providers[0]&&llm.providers[0].model)||'');
+    const primary=/息壤|星辰|xirang|wishub|tokenhub/i.test(an);
+    sub.textContent=base+(primary?'已接入息壤/星辰 primary，可发起战役':'已接入过渡模型，可发起战役');
+    if(ban) ban.innerHTML=pwdBanner+'<div class="banner ok">'+(primary?'参赛 primary 已就绪':'过渡模型已就绪')+'（'+esc(an)+' / '+esc(am)+'）· Token 见顶栏徽章 · 可用邮箱登录发起战役</div>';
   }else{
     sub.textContent=base+'未配置 Key 时可浏览看板，发起战役会明确提示';
     if(ban) ban.innerHTML=pwdBanner+'<div class="banner warn">尚未配置可用 LLM Key — 可浏览看板；发起战役会报错（禁止静默 mock）</div>';
   }
 }
+function fmtTokens(n){
+  n=Number(n||0);
+  if(n>=1000000) return (n/1000000).toFixed(2)+'M';
+  if(n>=1000) return (n/1000).toFixed(1)+'k';
+  return String(n);
+}
+let _lastTokenTotal=-1;
+let _tokenPollTimer=null;
+function applyTokenUsage(tu){
+  const tokEl=$('tokenText');
+  const badge=$('tokenBadge');
+  if(!tokEl) return;
+  tu=tu||{};
+  const total=Number(tu.total_tokens||0);
+  const last=(tu.last&&tu.last.total_tokens)||0;
+  const pt=Number(tu.prompt_tokens||0);
+  const ct=Number(tu.completion_tokens||0);
+  tokEl.textContent= total
+    ? ('Token '+fmtTokens(total)+'（入'+fmtTokens(pt)+'/出'+fmtTokens(ct)+'）'+(last?(' · 上次 '+fmtTokens(last)):'') )
+    : 'Token 0（LLM 调用后实时累计）';
+  if(badge){
+    badge.title='本进程累计 Token · 入站 '+pt+' · 出站 '+ct+' · 有 usage 的调用 '+(tu.calls_with_usage||0)+' 次（约每 2 秒刷新）';
+    if(_lastTokenTotal>=0 && total>_lastTokenTotal){
+      badge.style.boxShadow='0 0 0 2px rgba(45,212,191,.85)';
+      setTimeout(function(){ if(badge) badge.style.boxShadow=''; }, 1200);
+    }
+  }
+  _lastTokenTotal=total;
+}
 async function refreshBadge(){
   const el=$('modelText');
+  const tokEl=$('tokenText');
   const mcpEl=$('mcpText');
   try{
     const r=await fetch('/api/health',{cache:'no-store'});
@@ -352,6 +386,7 @@ async function refreshBadge(){
       if(llm.enabled && provs.length){ el.textContent=name+' / '+model; }
       else { el.textContent='⚠️ 无可用 LLM（禁止静默 mock）'; }
     }
+    applyTokenUsage(llm.token_usage||{});
     const mcp=h.mcp||{};
     if(mcpEl){
       mcpEl.textContent=mcp.ready ? (mcp.label||'MCP 工具已就绪') : (mcp.label||'MCP 封装缺失');
@@ -362,11 +397,18 @@ async function refreshBadge(){
   }catch(e){
     console.error('refreshBadge failed', e);
     if(el) el.textContent='健康检查失败';
+    if(tokEl) tokEl.textContent='Token —';
     if(mcpEl) mcpEl.textContent='MCP 未知';
     const sub=$('loginSub');
     if(sub) sub.textContent='惠民 · AI+自选开放场景｜邮箱登录｜健康检查失败，请确认服务已启动';
     return null;
   }
+}
+function startTokenLivePoll(){
+  if(_tokenPollTimer) return;
+  _tokenPollTimer=setInterval(function(){
+    refreshBadge().catch(function(){});
+  }, 2000);
 }
 const SAMPLE_LEAD='本周用 AI 产品获客并跟进 10 个意向客户：产出渠道清单、跟进话术与本周复盘要点';
 const SAMPLE_BRIEF='撰写一篇「息壤+一人公司」行业综述：机会点、风险与可落地知识库要点';
@@ -697,8 +739,10 @@ async function genFromTopic(title,summary){
   setHTML('topicBox','<p class="muted">生成中…</p>');
   try{
     const d=await api('/api/run',{method:'POST',body:JSON.stringify({action:'generate_article',params:{topic:title,summary:summary||'',tags:['成军台','选题池']}})});
-    setHTML('topicBox','<div class="banner ok">已生成 <b>'+esc(d.id)+'</b> · 质检:'+d.review_pass+
+    setHTML('topicBox','<div class="banner ok">已生成 <b>'+esc(d.id)+'</b> · 初审:'+d.review_pass+
+      ' · 真实数据:'+(d.real_data_used?'是':'否')+' · tokens≈'+(d.tokens_used||0)+
       ' <button class="btn sm" onclick="factoryTab(\'articles\')">去稿件台</button></div>');
+    try{refreshBadge();}catch(_e){}
   }catch(e){setHTML('topicBox','<p class="status-err">'+esc(e.message)+'</p>');}
 }
 async function fTabArticles(){
@@ -708,7 +752,9 @@ async function fTabArticles(){
   const campOpts=camps.slice(0,20).map(c=>'<option value="'+esc(c.id)+'">'+esc(c.id)+' · '+esc((c.goal||'').slice(0,24))+'</option>').join('');
   const rows=(articles||[]).slice().reverse().slice(0,40).map(a=>'<tr><td>'+esc(a.id)+'</td><td>'+esc(a.title)+
     (a.campaign_id?'<div class="muted">战役 '+esc(a.campaign_id)+'</div>':'')+
-    '</td><td>'+(a.review_pass?'<span class="status-ok">通过</span>':'<span class="status-warn">待审</span>')+'</td><td>'+esc(a.created_at||'')+'</td><td>'+
+    (a.real_data_used?'<div class="muted">真实标讯已引用</div>':'')+
+    '</td><td>'+(a.review_pass?'<span class="status-ok">通过</span>':'<span class="status-warn">待审</span>')+
+    '<div class="muted">tok≈'+esc(a.tokens_used||0)+'</div></td><td>'+esc(a.created_at||'')+'</td><td>'+
     '<button class="btn sm" onclick="previewArticle(\''+esc(a.file||'')+'\',\''+esc(a.id)+'\')">预览</button> '+
     '<button class="btn sm ghost" onclick="qaArticle(\''+esc(a.id)+'\')">质检</button> '+
     '<button class="btn sm ghost" onclick="exportArticleDocx(\''+esc(a.id)+'\')">导出 Word</button> '+
@@ -750,9 +796,11 @@ function runFactoryDemo(){
   api('/api/run',{method:'POST',body:JSON.stringify({action:'generate_article',params:{topic:topic,summary:'成军台演示',tags:['成军台']}})})
     .then(async d=>{
       const file=(d.file||'').split(/[/\\\\]/).pop();
-      setHTML('fbox','<div class="banner ok">已生成 <b>'+esc(d.id)+'</b> · 质检:'+d.review_pass+
+      setHTML('fbox','<div class="banner ok">已生成 <b>'+esc(d.id)+'</b> · 初审:'+d.review_pass+
+        ' · 真实数据:'+(d.real_data_used?'是':'否')+' · tokens≈'+(d.tokens_used||0)+
         ' <button class="btn sm" onclick="previewArticle(\''+esc(file)+'\',\''+esc(d.id)+'\')">预览</button> '+
         '<button class="btn sm" onclick="exportArticleDocx(\''+esc(d.id)+'\')">导出 Word</button></div>');
+      try{refreshBadge();}catch(_e){}
       if(file) await previewArticle(file, d.id);
     })
     .catch(e=>{if(!setHTML('fbox','<p class="status-err">'+esc(e.message)+'</p>')) alert(e.message);});
@@ -1415,8 +1463,12 @@ async function savePersonaNotes(identity){
     await loadInsightDetail(identity);
   }catch(e){alert(e.message);}
 }
-// 登录前即拉取健康检查：刷新模型徽章 + 动态登录文案（失败不静默）
-refreshBadge().catch(function(e){ console.error(e); var t=$('modelText'); if(t) t.textContent='健康检查失败'; });
+// 登录前即拉取健康检查：刷新模型徽章 + 动态登录文案；Token 每 2s 实时轮询
+refreshBadge().then(function(){ startTokenLivePoll(); }).catch(function(e){
+  console.error(e);
+  var t=$('modelText'); if(t) t.textContent='健康检查失败';
+  startTokenLivePoll();
+});
 </script>
 </body>
 </html>

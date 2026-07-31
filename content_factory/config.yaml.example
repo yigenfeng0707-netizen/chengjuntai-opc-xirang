@@ -77,13 +77,14 @@ llm:
       model: "sensenova-6.7-flash-lite"
       enabled: true
       timeout: 60
-    # —— Path B：参赛正式 primary（主办方发放后注入；endpoint/model 以主办方文档为准）——
-    # 正式演示前建议：设 XIRANG_API_KEY，将本段 enabled:true，并可把 interim 段 enabled:false
+    # —— Path B：参赛正式 primary（主办方发放后注入；endpoint/model 以控制台为准）——
+    # 正式演示前：设 XIRANG_API_KEY（可选 XIRANG_BASE_URL / XIRANG_MODEL），enabled:true
+    # 常见网关：wishub-x1 / wishub-x6（以发放的 BaseURL 为准）；model 可能是名称或 modelId
     - name: "primary-天翼云息壤-星辰TokenHub"
-      api_base: "https://wishub-x1.ctyun.cn/v1"
+      api_base: "https://wishub-x6.ctyun.cn/v1"
       api_key: "YOUR_XIRANG_OR_TOKENHUB_API_KEY"   # 占位；用 XIRANG_API_KEY 覆盖
       api_key_env: "XIRANG_API_KEY"
-      model: "DeepSeek-V3"
+      model: "YOUR_XIRANG_MODEL_ID"               # 占位；用 XIRANG_MODEL 覆盖
       enabled: false   # 主办方 Token 到手后改为 true
       timeout: 90
     - name: "secondary-星辰TokenHub"

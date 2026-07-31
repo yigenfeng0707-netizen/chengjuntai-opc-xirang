@@ -19,9 +19,80 @@ import llm_client
 
 ARTICLES_META = os.path.join(DATA_DIR, "articles_meta.json")
 
-PROMPT_OUTLINE = "你是技术内容大纲专家。为以下选题生成结构化大纲，含引言、3-5个核心章节(每章2-3个小节)、总结。输出Markdown列表。选题：{topic}\n摘要：{summary}"
-PROMPT_WRITE = "你是资深技术作者。根据大纲撰写完整Markdown长文，要求含实操步骤和代码块，篇幅{min_words}-{max_words}字。选题：{topic}\n大纲：{outline}"
-PROMPT_REVIEW = "你是内容审核专家。检查以下文稿：①虚构数据②占位符(如xxx/TODO)③无效代码④逻辑缺陷。输出JSON:{{\"pass\":bool,\"issues\":[...],\"suggestions\":\"...\"}}\n文稿：{article}"
+PROMPT_OUTLINE = (
+    "你是技术内容大纲专家。为以下选题生成结构化大纲，含引言、3-5个核心章节(每章2-3个小节)、总结。"
+    "输出Markdown列表。\n选题：{topic}\n摘要：{summary}\n"
+    "【真实数据上下文】（写作须引用，勿编造未标注数字）：\n{real_ctx}"
+)
+PROMPT_WRITE = (
+    "你是资深技术作者。根据大纲撰写完整Markdown长文，篇幅{min_words}-{max_words}字。\n"
+    "硬性要求：\n"
+    "1) 必须引用下方【真实数据上下文】中的统计数字，并写明「来源：成军台真实标讯库」；\n"
+    "2) 禁止出现 xxx/TODO/FIXME/[AI工具名称]/XX品牌 等占位符；产品名用「成军台」；\n"
+    "3) 任何示意性转化率/获客数必须标注「示例」，不得写成已发生的真实业绩；\n"
+    "4) 可含实操步骤；代码块可选，若写代码须完整可运行示意。\n"
+    "选题：{topic}\n大纲：{outline}\n【真实数据上下文】：\n{real_ctx}"
+)
+PROMPT_REVIEW = (
+    "你是内容审核专家。仅在下列情况判 fail：\n"
+    "① 出现未标注的绝对业绩数字且无法对应真实库（标注「示例/模拟」或写明「来源：成军台真实标讯库」的数字不算虚构）；\n"
+    "② 残留占位符（xxx/TODO/FIXME/[AI工具名称]/XX 等）；\n"
+    "③ 明显残缺无法运行的伪代码；\n"
+    "④ 严重自相矛盾。\n"
+    "Markdown表格/列表不算无效代码。达标则 pass=true、issues=[]。\n"
+    "只输出JSON:{{\"pass\":bool,\"issues\":[{{\"type\":\"...\",\"detail\":\"...\"}}],\"suggestions\":\"...\"}}\n"
+    "文稿：{article}"
+)
+
+
+def _format_nl2sql_ctx(result: dict) -> str:
+    if not result or not result.get("ok"):
+        return ""
+    cols = result.get("columns") or []
+    rows = result.get("rows") or []
+    lines = [
+        f"数据源={result.get('source') or 'nl2sql'} · 行数={result.get('row_count', len(rows))}",
+    ]
+    if result.get("sql"):
+        lines.append(f"SQL摘要：{str(result.get('sql'))[:180]}")
+    for row in rows[:12]:
+        if isinstance(row, dict):
+            lines.append(" · ".join(f"{k}={v}" for k, v in row.items()))
+        elif isinstance(row, (list, tuple)):
+            if cols and len(cols) == len(row):
+                lines.append(" · ".join(f"{c}={v}" for c, v in zip(cols, row)))
+            else:
+                lines.append(" · ".join(str(x) for x in row))
+        else:
+            lines.append(str(row))
+    return "\n".join(lines)
+
+
+def fetch_real_content_context(topic: str = "", summary: str = "") -> dict:
+    """从 NL2SQL/znws 拉取真实标讯统计，供种草/内容写作引用。"""
+    try:
+        import agents_data
+    except Exception as ex:
+        return {"ok": False, "text": "", "error": str(ex)}
+
+    q = (
+        "统计真实标讯总条数、演示条数、近30天新增、按地区TOP5、按行业TOP5。"
+        f"选题参考：{(topic or '')[:80]} {(summary or '')[:120]}"
+    )
+    try:
+        result = agents_data.query_nl2sql(q, chart_type="table")
+    except Exception as ex:
+        return {"ok": False, "text": "", "error": str(ex)}
+
+    if not result.get("ok"):
+        return {
+            "ok": False,
+            "text": "（NL2SQL 暂不可用：写作时勿编造具体标讯业绩数字；示意数据须标注「示例」。）",
+            "error": result.get("error") or "offline",
+            "raw": result,
+        }
+    text = _format_nl2sql_ctx(result)
+    return {"ok": True, "text": text or "（查询成功但无行）", "raw": result}
 
 
 def _call_llm(prompt: str, fallback: str = "") -> str:
@@ -65,10 +136,13 @@ def _mock_article(topic, outline, min_words, max_words):
 
 
 # ---------- Agent 1：大纲 ----------
-def outline_agent(topic: str, summary: str = "") -> str:
+def outline_agent(topic: str, summary: str = "", real_ctx: str = "") -> str:
     @retry("outline_agent")
     def _do():
-        prompt = PROMPT_OUTLINE.format(topic=topic, summary=summary)
+        prompt = PROMPT_OUTLINE.format(
+            topic=topic, summary=summary,
+            real_ctx=real_ctx or "（暂无真实库快照）",
+        )
         out = _call_llm(prompt, fallback=_mock_outline(topic, summary))
         op_logger.log("agent_outline", f"大纲生成完成[{topic}]")
         return out
@@ -76,13 +150,16 @@ def outline_agent(topic: str, summary: str = "") -> str:
 
 
 # ---------- Agent 2：写作 ----------
-def write_agent(topic: str, outline: str) -> str:
+def write_agent(topic: str, outline: str, real_ctx: str = "") -> str:
     cfg = load_config().get("article", {})
     min_w = cfg.get("target_min_words", 800)
     max_w = cfg.get("target_max_words", 4000)
     @retry("write_agent")
     def _do():
-        prompt = PROMPT_WRITE.format(topic=topic, outline=outline, min_words=min_w, max_words=max_w)
+        prompt = PROMPT_WRITE.format(
+            topic=topic, outline=outline, min_words=min_w, max_words=max_w,
+            real_ctx=real_ctx or "（暂无真实库快照；示意数据须标注「示例」）",
+        )
         out = _call_llm(prompt, fallback=_mock_article(topic, outline, min_w, max_w))
         op_logger.log("agent_write", f"文稿生成完成[{topic}]，{len(out)}字")
         return out
@@ -109,9 +186,26 @@ def generate_article(topic: str, summary: str = "", tags: list = None, task_id: 
                      campaign_id: str = None) -> dict:
     """三 Agent 串行：大纲→写作→初审，返回稿件信息；可选关联战役 ID"""
     op_logger.log("agent_pipeline", f"开始生成文稿[{topic}]", task_id=task_id)
-    outline = outline_agent(topic, summary)
-    article = write_agent(topic, outline)
+    usage_before = llm_client.token_usage()
+    real = fetch_real_content_context(topic, summary)
+    real_ctx = real.get("text") or ""
+    if real.get("ok"):
+        op_logger.log("agent_pipeline", "已注入真实标讯统计到写作上下文", task_id=task_id)
+    else:
+        op_logger.log(
+            "agent_pipeline",
+            f"真实数据未注入（将约束勿编造）：{real.get('error')}",
+            level="WARN", task_id=task_id,
+        )
+
+    outline = outline_agent(topic, summary, real_ctx=real_ctx)
+    article = write_agent(topic, outline, real_ctx=real_ctx)
     review = review_agent(article)
+    usage_after = llm_client.token_usage()
+    tokens_used = max(
+        0,
+        int(usage_after.get("total_tokens") or 0) - int(usage_before.get("total_tokens") or 0),
+    )
 
     art_id = f"ART{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
     safe_title = re.sub(r"[\\/:*?\"<>|]", "_", topic)[:40]
@@ -135,6 +229,14 @@ def generate_article(topic: str, summary: str = "", tags: list = None, task_id: 
         "id": art_id, "title": topic, "file": os.path.basename(md_file),
         "tags": tags or [], "summary": summary_text,
         "review_pass": review.get("pass", False), "review": review,
+        "real_data_used": bool(real.get("ok")),
+        "tokens_used": tokens_used,
+        "token_usage_snapshot": {
+            "total_tokens": usage_after.get("total_tokens"),
+            "prompt_tokens": usage_after.get("prompt_tokens"),
+            "completion_tokens": usage_after.get("completion_tokens"),
+            "last": usage_after.get("last"),
+        },
         "created_at": datetime.datetime.now().isoformat(),
     }
     if campaign_id:
@@ -143,10 +245,16 @@ def generate_article(topic: str, summary: str = "", tags: list = None, task_id: 
     with open(ARTICLES_META, "w", encoding="utf-8") as f:
         json.dump(meta_list, f, ensure_ascii=False, indent=2)
 
-    op_logger.log("agent_pipeline", f"文稿生成完成 {art_id}，初审{'通过' if review.get('pass') else '未通过'}", task_id=task_id)
+    op_logger.log(
+        "agent_pipeline",
+        f"文稿生成完成 {art_id}，初审{'通过' if review.get('pass') else '未通过'}，"
+        f"真实数据={'是' if real.get('ok') else '否'}，tokens≈{tokens_used}",
+        task_id=task_id,
+    )
     return {"id": art_id, "title": topic, "file": md_file, "summary": summary_text,
             "review_pass": review.get("pass", False), "review": review,
-            "campaign_id": campaign_id}
+            "campaign_id": campaign_id, "real_data_used": bool(real.get("ok")),
+            "tokens_used": tokens_used}
 
 
 def link_article_campaign(article_id: str, campaign_id: str) -> dict:

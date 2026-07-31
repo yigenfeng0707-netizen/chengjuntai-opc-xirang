@@ -162,7 +162,9 @@ def _execute_task(camp: dict, task: dict):
         body = _read_factory_article(art)
         header = (
             f"> 内容工厂稿件：`{art.get('id')}` · 初审:{art.get('review_pass')} · "
-            f"质检门控:{qa.get('pass') if isinstance(qa, dict) else '-'}\n\n"
+            f"质检门控:{qa.get('pass') if isinstance(qa, dict) else '-'} · "
+            f"真实数据:{'是' if art.get('real_data_used') else '否'} · "
+            f"tokens≈{art.get('tokens_used') or 0}\n\n"
         )
         if not body.lstrip().startswith(">"):
             body = header + body

@@ -20,6 +20,14 @@ from config_loader import load_config
 
 _LAST_SUCCESS = {"name": None, "model": None, "api_base": None}
 _COUNTERS = {"ok": 0, "fail": 0}
+# 进程内累计 token（OpenAI 兼容 usage；网关未返回时为 0）
+_TOKEN_USAGE = {
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0,
+    "calls_with_usage": 0,
+    "last": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "model": None, "name": None},
+}
 
 _ENV_KEY_MAP = {
     "息壤": "XIRANG_API_KEY",
@@ -43,6 +51,11 @@ def _is_placeholder_key(key: str) -> bool:
     return any(b in k for b in bad)
 
 
+def _is_xirang_provider(name: str) -> bool:
+    n = (name or "").lower()
+    return "息壤" in (name or "") or "xirang" in n or "wishub" in n
+
+
 def _resolve_api_key(provider: dict) -> str:
     key = provider.get("api_key") or ""
     name = provider.get("name") or ""
@@ -63,6 +76,30 @@ def _resolve_api_key(provider: dict) -> str:
     return str(key).strip()
 
 
+def _resolve_api_base(provider: dict) -> str:
+    env_name = provider.get("api_base_env")
+    if env_name and os.environ.get(env_name):
+        return os.environ[env_name].strip().rstrip("/")
+    name = provider.get("name") or ""
+    if _is_xirang_provider(name) and os.environ.get("XIRANG_BASE_URL"):
+        return os.environ["XIRANG_BASE_URL"].strip().rstrip("/")
+    base = (provider.get("api_base") or "").strip().rstrip("/")
+    return base
+
+
+def _resolve_model(provider: dict) -> str:
+    env_name = provider.get("model_env")
+    if env_name and os.environ.get(env_name):
+        return os.environ[env_name].strip()
+    name = provider.get("name") or ""
+    if _is_xirang_provider(name) and os.environ.get("XIRANG_MODEL"):
+        return os.environ["XIRANG_MODEL"].strip()
+    model = (provider.get("model") or "").strip()
+    if _is_placeholder_key(model):
+        return ""
+    return model
+
+
 def _get_providers() -> list:
     """读取当前生效的 provider 列表；Llm 未启用或未配置时返回 []"""
     cfg = load_config().get("llm", {})
@@ -77,10 +114,14 @@ def _get_providers() -> list:
             if not p.get("enabled", True):
                 continue
             api_key = _resolve_api_key(p)
-            if p.get("api_base") and api_key and p.get("model"):
+            api_base = _resolve_api_base(p)
+            model = _resolve_model(p)
+            if api_base and api_key and model:
                 item = dict(p)
                 item["api_key"] = api_key
-                item.setdefault("name", p.get("api_base", "?"))
+                item["api_base"] = api_base
+                item["model"] = model
+                item.setdefault("name", api_base or "?")
                 out.append(item)
         return out
 
@@ -113,6 +154,8 @@ def provider_status() -> dict:
             "重启 Web 后生效。禁止静默 mock；结构验证：python tests/test_campaign_core.py；"
             "双路径：docs/CTYUN_TRIAL.md"
         )
+    usage = dict(_TOKEN_USAGE)
+    usage["last"] = dict(_TOKEN_USAGE.get("last") or {})
     return {
         "enabled": enabled,
         "providers": [
@@ -123,9 +166,33 @@ def provider_status() -> dict:
         "active_model": _LAST_SUCCESS.get("model") or (providers[0]["model"] if providers else None),
         "ok": _COUNTERS["ok"],
         "fail": _COUNTERS["fail"],
+        "token_usage": usage,
         "require_real_llm": bool(load_config().get("llm", {}).get("require_real_llm", True)),
         "hint": hint,
     }
+
+
+def token_usage() -> dict:
+    """进程内累计 token 消耗快照。"""
+    out = dict(_TOKEN_USAGE)
+    out["last"] = dict(_TOKEN_USAGE.get("last") or {})
+    return out
+
+
+def _record_usage(payload: dict, name: str, model: str) -> dict:
+    """从 chat/completions 响应提取 usage 并累加。"""
+    u = (payload or {}).get("usage") or {}
+    pt = int(u.get("prompt_tokens") or u.get("input_tokens") or 0)
+    ct = int(u.get("completion_tokens") or u.get("output_tokens") or 0)
+    tt = int(u.get("total_tokens") or (pt + ct) or 0)
+    last = {"prompt_tokens": pt, "completion_tokens": ct, "total_tokens": tt, "model": model, "name": name}
+    _TOKEN_USAGE["last"] = last
+    if tt or pt or ct:
+        _TOKEN_USAGE["prompt_tokens"] += pt
+        _TOKEN_USAGE["completion_tokens"] += ct
+        _TOKEN_USAGE["total_tokens"] += tt
+        _TOKEN_USAGE["calls_with_usage"] += 1
+    return last
 
 
 def bump_ok():
@@ -199,15 +266,17 @@ def call_llm(prompt: str, fallback: str = "", max_tokens: int = None,
                 timeout=tmo,
             )
             if r.status_code == 200:
-                content = (r.json()
-                           .get("choices", [{}])[0]
+                payload = r.json() if r.content else {}
+                content = ((payload.get("choices") or [{}])[0]
                            .get("message", {})
                            .get("content", ""))
+                usage_last = _record_usage(payload if isinstance(payload, dict) else {}, name, model)
                 if content and content.strip():
                     _LAST_SUCCESS.update({"name": name, "model": model, "api_base": p["api_base"]})
                     _COUNTERS["ok"] += 1
+                    tok = usage_last.get("total_tokens") or 0
                     op_logger.log("llm_client",
-                                  f"LLM调用成功[{name}/{model}]",
+                                  f"LLM调用成功[{name}/{model}] tokens={tok}",
                                   level="INFO")
                     return content.strip()
                 op_logger.log("llm_client",
