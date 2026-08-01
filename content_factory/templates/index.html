@@ -143,7 +143,7 @@ textarea{min-height:88px;resize:vertical}
   <p style="margin:-4px 0 10px;text-align:center;font-size:15px;font-weight:600;color:#0f766e;line-height:1.4">缺编辑部的一人公司 · 内容成军闭环</p>
   <p class="sub" id="loginSub">惠民 · AI+自选开放场景｜支持邮箱登录｜检测模型配置…</p>
   <div id="loginBanner"></div>
-  <button type="button" class="btn judge-cta" id="loginJudgeCta" onclick="startJudge60sFromLogin()">评委 60 秒体验</button>
+  <button type="button" class="btn judge-cta" id="loginJudgeCta" data-testid="judge-60s-cta" onclick="startJudge60sFromLogin()">评委 60 秒体验</button>
   <p class="muted" style="margin:8px 0 16px;text-align:center;line-height:1.45">零讲解一条路：样例战役 → Word 周报 → 问数一表<br>（只读评委自动登录 · 无需找侧栏）</p>
   <div id="loginForm">
     <div class="row"><div class="col"><input id="lu" placeholder="邮箱或用户名" value="" autocomplete="username"></div></div>
@@ -225,8 +225,8 @@ function startJudge60sFromLogin(){
 function judgeGuideHtml(stepNote){
   return '<div class="judge-guide" id="judgeGuide">'+
     '<b>评委 60 秒</b><span class="muted">'+(stepNote||'样例战役 → Word → 问数')+'</span>'+
-    '<button type="button" class="btn sm" onclick="judgeExportWord()">① 导出 Word</button>'+
-    '<button type="button" class="btn sm ghost" onclick="judgeGoNl2sql()">② 智能问数一表</button>'+
+    '<button type="button" class="btn sm" data-testid="judge-export-word" onclick="judgeExportWord()">① 导出 Word</button>'+
+    '<button type="button" class="btn sm ghost" data-testid="judge-nl2sql" onclick="judgeGoNl2sql()">② 智能问数一表</button>'+
     '<button type="button" class="btn sm ghost" onclick="dismissJudgeGuide()">关闭</button>'+
     '</div>';
 }

@@ -22,6 +22,28 @@ import docx_exporter
 WORKSPACE_DIR = os.path.join(DATA_DIR, "bid_workspace")
 os.makedirs(WORKSPACE_DIR, exist_ok=True)
 
+# 通用投标包章节大纲（可复用模板；无客户密钥）
+BID_PACKAGE_OUTLINE_PATH = os.path.join(DATA_DIR, "bid_package_outline.md")
+
+
+def load_bid_package_outline() -> str:
+    """读取投标包章节大纲模板；缺失时返回内置短大纲。"""
+    try:
+        if os.path.isfile(BID_PACKAGE_OUTLINE_PATH):
+            with open(BID_PACKAGE_OUTLINE_PATH, "r", encoding="utf-8") as f:
+                text = (f.read() or "").strip()
+            if text:
+                return text
+    except OSError as ex:
+        op_logger.log("bid_workspace", f"读取投标包大纲失败: {ex}", level="WARN")
+    return (
+        "# 投标文件章节大纲（内置短版）\n\n"
+        "## 第一册 商务\n投标函 / 授权 / 商务响应 / 报价\n\n"
+        "## 第二册 技术\n项目理解 / 架构 / 实施方案 / 安全 / 售后\n\n"
+        "## 第三册 资质与业绩\n资质清单 / 同类业绩\n\n"
+        "## 第四册 合规自检\n参数响应表 / 废标风险 / 提交前清单\n"
+    )
+
 # 招标文本常见条款关键词 → 默认要求项
 _RULE_PATTERNS = [
     (r"等保|等级保护|安全测评", "信息安全等保合规证明与测评报告"),
@@ -291,7 +313,20 @@ def export_matrix_docx(
         "2. 有证据项：导出本 Word 附卷，并在智能问数侧用赛道问题补充市场佐证（bid_telecom.db）。",
         "3. 正式投标文本请依法务与商务终审；本包仅作材料编排辅助。",
         "",
+        "---",
+        "",
+        "## 五、投标包章节大纲（模板）",
+        "",
+        "以下为通用分册结构，编制时按招标范围裁剪；与上方清单/矩阵对照勾选。",
+        "",
     ]
+    outline = load_bid_package_outline()
+    # 大纲文件自带一级标题时降为正文，避免与导出标题重复抢层级
+    outline_body = outline
+    if outline_body.lstrip().startswith("# "):
+        outline_body = "\n".join(outline_body.splitlines()[1:]).lstrip()
+    lines.append(outline_body)
+    lines.append("")
     md = "\n".join(lines)
     safe = re.sub(r'[\\/:*?"<>|]', "_", (project_name or title))[:40]
     out_name = f"bid_pack_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{safe}.docx"
@@ -303,5 +338,6 @@ def export_matrix_docx(
         "docx": path,
         "download": f"/api/download_docx?path={os.path.basename(path)}",
         "filename": os.path.basename(path),
-        "pack": "cover+checklist+matrix",
+        "pack": "cover+checklist+matrix+outline",
+        "outline": os.path.basename(BID_PACKAGE_OUTLINE_PATH),
     }

@@ -37,5 +37,7 @@
 - [ ] PROJECT_DOC / PPT / 视频 / README 评委路径一致（均指向 60 秒 CTA）
 - [ ] `STORE_REGISTRATION.md` 已填公网 Demo 与仓库链接
 - [ ] 智云 Store 赛道勾选正确（惠民 · AI+自选）
+- [ ] **主提交仓仅为** `chengjuntai-opc-xirang`（勿填 bidding-intelligence / opc-builder 为主链接）
+- [ ] 本地交付物就绪：`demo-output/Chengjuntai_demo_cinematic_60s.mp4` + `docs/成军台_息壤杯预赛答辩.pptx`（见 `delivery-notes.md`）
 - [ ] 仓库公开或按赛事要求授权评委访问
-- [ ] 密钥与改密后账号未提交 Git；口令仅存 `ADMIN_ACCESS.local.md`
+- [ ] 密钥与改密后账号未提交 Git；口令仅存 `ADMIN_ACCESS.local.md`；SenseNova 暴露 Key 已按 `SECURITY_KEY_ROTATION.md` 轮换

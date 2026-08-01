@@ -32,6 +32,10 @@ venv/
 .venv/
 env/
 
+# ========== 演示视频产物（本地成片，勿提交大文件）==========
+demo-output/
+tools/demo-video/node_modules/
+
 # ========== 临时文件 ==========
 .temp/
 *.tmp

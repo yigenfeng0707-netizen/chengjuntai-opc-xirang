@@ -15,15 +15,17 @@
 - 团队人数：1（OPC，≤3）
 - 技术栈：Python / FastAPI / 多 Agent / NL2SQL MCP / 天翼云 / 星辰 TokenHub
 - Demo 地址：（天翼云部署后填写公网 URL；本地仅为开发）http://127.0.0.1:8090
-- 代码仓库：（推送后填写）
-- 演示视频：（成片后填写）
-- PPT / 项目文档：见 `PPT_OUTLINE.md` / `PROJECT_DOC.md`
+- 代码仓库：https://github.com/yigenfeng0707-netizen/chengjuntai-opc-xirang
+- 演示视频：本地成片 `demo-output/Chengjuntai_demo_cinematic_60s.mp4`（及 `_submit` 同内容；≤60s）
+- PPT / 项目文档：`docs/成军台_息壤杯预赛答辩.pptx`（12 页）；说明见 `PPT_OUTLINE.md` / `PROJECT_DOC.md` / `delivery-notes.md`
 - 创新性关键词：一人成军、目标驱动、人审卡点、息壤原生
 - 社会价值：降低个体经营数字化门槛
 - 商业模式：订阅 + Token 用量 + 模板战役包
 - 身份证号：本人填写（不入库、不入 Git）
 
-## GitHub（成军台主仓）
+## GitHub（成军台主仓 · 唯一提交仓）
 
-- https://github.com/yigenfeng0707-netizen/chengjuntai-opc-xirang
-- legacy 底座：https://github.com/yigenfeng0707-netizen/nl2sql-teleagent
+- **主仓（必填）**：https://github.com/yigenfeng0707-netizen/chengjuntai-opc-xirang
+- legacy 底座（勿作主链接）：https://github.com/yigenfeng0707-netizen/nl2sql-teleagent
+- **不要**把下列仓库填为 Demo/代码主链接：`bidding-intelligence-assistant`（聊天壳）、`opc-builder-bid-ai`（材料包无工程）
+- 选型对照：`REPO_COMPARISON.md` · 密钥轮换：`SECURITY_KEY_ROTATION.md`
