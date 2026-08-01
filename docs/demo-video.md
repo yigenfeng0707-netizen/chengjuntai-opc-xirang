@@ -19,4 +19,5 @@ powershell -File "$env:USERPROFILE\.cursor\skills\demo-video-factory\scripts\run
 # 若仅微调时长：compose 后可用 ffmpeg -t 59.5 裁切
 ```
 
-分镜对齐 `DEMO_VIDEO_SCRIPT.md` §A：评委 CTA → 样例产物 → Word → 问数。
+分镜对齐 `DEMO_VIDEO_SCRIPT.md` §A：评委 CTA → 样例产物 → Word → 问数。  
+答辩 PPT 静帧与 pptx：`python scripts\build_contest_pptx.py --render` → `assets/ppt/` + `docs/成军台_息壤杯预赛答辩.pptx`。

@@ -11,7 +11,7 @@
 | 项 | 本地路径 | 规格 |
 |----|----------|------|
 | 演示视频 | `demo-output/Chengjuntai_demo_cinematic_60s.mp4`（及 `_submit` 同内容） | **59.5s** · ~8MB · 1080p30 · 硬烧字幕 |
-| 答辩 PPT | `docs/成军台_息壤杯预赛答辩.pptx` | 12 页 · ~0.04MB · pptx |
+| 答辩 PPT | `docs/成军台_息壤杯预赛答辩.pptx` | 13 页 · 图文并茂 · ~1.5MB · pptx |
 
 ## 视频重跑
 
@@ -36,6 +36,9 @@ python "$env:USERPROFILE\.cursor\skills\demo-video-factory\scripts\compose_demo_
 ## PPT 重生成
 
 ```powershell
+# Pillow 静帧 → assets/ppt/*.png，再嵌入 pptx
+python scripts\build_contest_pptx.py --render
+# 仅重打 pptx（已有 assets/ppt）
 python scripts\build_contest_pptx.py
 ```
 
