@@ -2,7 +2,7 @@
 
 ## 背景
 
-公开仓库 [bidding-intelligence-assistant](https://github.com/yigenfeng0707-netizen/bidding-intelligence-assistant) 曾在 `backend/app/services/ai_service.py` / `config.py` **硬编码**商汤 SenseNova API Key。源码侧已改为仅从环境变量 `SENSENOVA_API_KEY`（或 `backend/.env`）读取，但 **Git 历史仍可能保留旧值**。
+公开仓库 [bidding-intelligence-assistant](https://github.com/yigenfeng0707-netizen/bidding-intelligence-assistant)（**已 GitHub Archive**）曾在 `backend/app/services/ai_service.py` / `config.py` **硬编码**商汤 SenseNova API Key。源码侧已改为仅从环境变量 `SENSENOVA_API_KEY`（或 `backend/.env`）读取，但 **Git 历史仍可能保留旧值**。归档仓库 + 控制台作废 Key 即为首选缓解（未做破坏性 history rewrite）。
 
 ## 你需要做的（人工）
 

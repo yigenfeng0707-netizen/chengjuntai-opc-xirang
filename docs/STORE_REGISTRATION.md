@@ -27,5 +27,5 @@
 
 - **主仓（必填）**：https://github.com/yigenfeng0707-netizen/chengjuntai-opc-xirang
 - legacy 底座（勿作主链接）：https://github.com/yigenfeng0707-netizen/nl2sql-teleagent
-- **不要**把下列仓库填为 Demo/代码主链接：`bidding-intelligence-assistant`（聊天壳）、`opc-builder-bid-ai`（材料包无工程）
+- **不要**把下列仓库填为 Demo/代码主链接：`bidding-intelligence-assistant`（聊天壳，已 Archive）、`opc-builder-bid-ai`（材料包无工程，已 Archive）
 - 选型对照：`REPO_COMPARISON.md` · 密钥轮换：`SECURITY_KEY_ROTATION.md`
