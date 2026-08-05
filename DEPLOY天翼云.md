@@ -1,6 +1,6 @@
 # 天翼云 ECS 部署手册 — 成军台（OPC OS on 息壤）/ NL2SQL TeleAgent + AI 内容工厂
 
-> 版本: 1.2 | 更新: 2026-07-29 | 适用: 天翼云 ECS (Ubuntu 22.04 / CentOS 8+)
+> 版本: 1.3 | 更新: 2026-08-05 | 适用: 天翼云 ECS (Ubuntu 22.04 / CentOS 8+)
 > 产品升级：本仓库已升维为「成军台」参赛交付版，Web 默认入口为成军看板（端口 8090）。
 >
 > **参赛双路径**：可先用 **ECS 免费试用** 部署公网 Demo（不必等星辰 Token）；主办方发放息壤/星辰 Key 后再切 primary LLM。  
@@ -34,8 +34,9 @@
 | MCP 服务 | 8765 | aiohttp，MCP 协议接入层 |
 | 内容工厂 Web | 8090 | FastAPI，Web 管理面板 |
 | Nginx | 80 | 反向代理，对外统一入口 |
+| PostgreSQL | 5432 | 生产数据库（本地 127.0.0.1，不对公网开放） |
 
-数据库：SQLite（`bid_telecom.db`），当前 60 条浙江省政采网真实通信类项目数据。
+数据库：PostgreSQL（生产，库名 `chengjuntai`），自动建表 + 从 SQLite 迁移数据。本地开发默认 SQLite（`bid_telecom.db`），通过 `db.py` 统一适配，零代码切换。
 
 数据来源：浙江省政府采购网（zfcg.czt.zj.gov.cn），自动抓取，每日 09:00 增量更新。
 
@@ -163,14 +164,15 @@ sudo bash deploy_to_ctyun.sh
 ```
 
 脚本会自动完成：
-1. 安装 Python 3.12 + Nginx
-2. 创建虚拟环境 + 安装所有依赖
-3. 生成生产配置（随机 Token / 密码）
-4. 抓取浙江政采网 60 条真实数据（约 3-5 分钟）
-5. 创建 3 个 systemd 服务 + 定时任务
-6. 配置 Nginx 反向代理
-7. 配置防火墙
-8. 启动服务并验证
+1. 安装 Python 3.12 + Nginx + PostgreSQL
+2. 创建虚拟环境 + 安装所有依赖（含 `psycopg2-binary`）
+3. 初始化 PostgreSQL（建库 `chengjuntai` + 建用户 + 随机密码）
+4. 生成生产配置（随机 Token / 密码 / DB 连接串注入 `DATABASE_URL`）
+5. 建表 + 从 SQLite 迁移数据（无 SQLite 则在线抓取，约 3-5 分钟）
+6. 创建 3 个 systemd 服务 + 定时任务
+7. 配置 Nginx 反向代理
+8. 配置防火墙
+9. 启动服务并验证
 
 部署完成后，终端会显示凭据和服务地址。
 
@@ -315,16 +317,38 @@ systemctl status teleagent-{backend,mcp,web}
 ### 9.2 数据更新
 
 ```bash
-# 手动全量重建
+# 手动全量重建（写入 PostgreSQL）
 cd /opt/nl2sql_teleagent_prod
 source venv/bin/activate
+export DATABASE_URL="postgresql://chengjuntai:密码@127.0.0.1:5432/chengjuntai"
 python fetch_real_data.py --full-rebuild
 
 # 仅抓取不导入（检查数据）
 python fetch_real_data.py --fetch-only
 
+# 从 SQLite 迁移到 PostgreSQL（如有旧的 bid_telecom.db）
+python migrate_sqlite_to_pg.py --source bid_telecom.db
+
 # 定时任务已自动配置（每日 09:00）
 crontab -l -u teleagent
+```
+
+### 9.3 PostgreSQL 管理
+
+```bash
+# 服务管理
+systemctl status postgresql
+systemctl restart postgresql
+
+# 进入 psql
+su - postgres
+psql -d chengjuntai
+
+# 查看数据量
+psql -d chengjuntai -c "SELECT COUNT(*) FROM bid_projects;"
+
+# 备份数据库
+pg_dump -U chengjuntai -h 127.0.0.1 chengjuntai > backup_$(date +%Y%m%d).sql
 ```
 
 ### 9.3 Nginx 管理
@@ -382,10 +406,9 @@ systemctl restart teleagent-web
 
 ### 10.2 建议（公测稳定后）
 
-- [ ] **数据库迁移**: SQLite → 天翼云 MySQL（高可用 + 备份）
 - [ ] **日志持久化**: 接入天翼云日志服务
 - [ ] **监控告警**: 天翼云云监控 + 告警通知（CPU/内存/带宽/端口）
-- [ ] **自动备份**: 每日打包 `bid_telecom.db` + `articles/` 到天翼云对象存储
+- [ ] **自动备份**: 每日 `pg_dump` 备份 PostgreSQL + `articles/` 到天翼云对象存储
 - [ ] **CDN 加速**: 天翼云 CDN 加速静态资源
 - [ ] **DDoS 防护**: 天翼云DDoS高防（如遇攻击）
 
@@ -433,6 +456,28 @@ source venv/bin/activate
 python fetch_real_data.py --full-rebuild 2>&1 | tail -20
 ```
 如持续失败，等待 10-30 分钟后重试（IP 频率限制会自动解除）。
+
+**Q: PostgreSQL 连接失败**
+
+检查 PostgreSQL 服务状态和连接参数：
+```bash
+systemctl status postgresql
+# 测试连接
+psql -U chengjuntai -h 127.0.0.1 -d chengjuntai -c "SELECT 1;"
+# 查看 DATABASE_URL 是否正确注入
+grep DATABASE_URL /etc/systemd/system/teleagent-*.service
+# 查看密码
+cat /opt/nl2sql_teleagent_prod/CREDENTIALS.txt | grep -A2 PostgreSQL
+```
+如密码不对，重置后重启服务：
+```bash
+su - postgres
+psql -c "ALTER USER chengjuntai WITH PASSWORD '新密码';"
+exit
+# 更新 config.yaml 中的 pg_password 和 systemd 的 DATABASE_URL
+systemctl daemon-reload
+systemctl restart teleagent-backend teleagent-mcp teleagent-web
+```
 
 **Q: NL2SQL 查询返回"降级为规则模式"**
 
@@ -489,8 +534,8 @@ journalctl --vacuum-time=7d
                   /     |     \
         [Flask:8082] [aiohttp:8765] [FastAPI:8090]
               |           |              |
-           [SQLite DB]   MCP协议      Web面板
-          bid_telecom.db
+        [PostgreSQL]   MCP协议      Web面板
+        :5432 (local)
               |
         [政采网抓取]
       fetch_real_data.py
@@ -507,9 +552,11 @@ journalctl --vacuum-time=7d
 ├── znws_query_mock.py           ← 后端服务 (8082)
 ├── mcp_http_nl2sql_v3.py        ← MCP 服务 (8765)
 ├── fetch_real_data.py           ← 数据抓取
+├── db.py                        ← 统一数据库连接（PG/SQLite 自适应）
+├── migrate_sqlite_to_pg.py      ← SQLite → PostgreSQL 迁移脚本
 ├── logger_config.py             ← 日志配置
 ├── test_nl2sql_7.py             ← 验证脚本
-├── bid_telecom.db               ← SQLite 数据库
+├── bid_telecom.db               ← SQLite 数据库（本地 fallback）
 ├── venv/                        ← Python 虚拟环境
 ├── CREDENTIALS.txt              ← 凭据（部署后删除）
 ├── content_factory/

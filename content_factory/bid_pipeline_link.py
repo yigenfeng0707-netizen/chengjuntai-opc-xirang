@@ -9,6 +9,7 @@ BidAutoPipeline 标书系统双向联动（成军台内嵌版）
   2) bid_pipeline_root/projects/project_list.json 或本地 bid_projects.json
   3) 冷启动 seed 演示 JSON（醒目标注本地回退）
 """
+
 from __future__ import annotations
 
 import os
@@ -17,7 +18,7 @@ import json
 import shutil
 import hashlib
 import datetime
-import sqlite3
+import sys
 from typing import Optional, List
 
 from config_loader import KNOWLEDGE_DIR, DATA_DIR, ROOT, load_config
@@ -26,6 +27,11 @@ import agents
 
 REPO_ROOT = os.path.dirname(ROOT)
 TELECOM_DB = os.path.join(REPO_ROOT, "bid_telecom.db")
+
+# Unified DB layer
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+import db as _db
 
 DEMO_BID_PROJECTS = [
     {
@@ -109,9 +115,11 @@ def _db_stats() -> dict:
     """读取 bid_telecom.db 统计；优先复用 fetch_real_data.db_stats。"""
     try:
         import sys
+
         if REPO_ROOT not in sys.path:
             sys.path.insert(0, REPO_ROOT)
         from fetch_real_data import db_stats
+
         return db_stats(TELECOM_DB)
     except Exception:
         out = {
@@ -128,8 +136,10 @@ def _db_stats() -> dict:
         if not out["db_exists"]:
             return out
         try:
-            conn = sqlite3.connect(TELECOM_DB)
-            out["row_count"] = conn.execute("SELECT COUNT(*) FROM bid_projects").fetchone()[0]
+            conn = _db.get_conn()
+            out["row_count"] = conn.execute(
+                "SELECT COUNT(*) FROM bid_projects"
+            ).fetchone()[0]
             out["real_count"] = conn.execute(
                 "SELECT COUNT(*) FROM bid_projects WHERE owner_user_id=?", ("real",)
             ).fetchone()[0]
@@ -145,7 +155,7 @@ def _db_stats() -> dict:
         return out
 
 
-def _row_to_project(row: sqlite3.Row) -> dict:
+def _row_to_project(row) -> dict:
     rid = row["id"]
     industry = row["industry"] or "未分类"
     region = row["region"] or ""
@@ -157,12 +167,16 @@ def _row_to_project(row: sqlite3.Row) -> dict:
         "industry": industry,
         "赛道": industry,
         "region": region,
-        "owner": "浙江政采网" if owner_tag == "real" else ("演示库" if owner_tag == "demo" else owner_tag or "标讯库"),
+        "owner": "浙江政采网"
+        if owner_tag == "real"
+        else ("演示库" if owner_tag == "demo" else owner_tag or "标讯库"),
         "budget_wan": row["win_amount"],
         "status": row["status"] or "",
         "deadline": row["bid_date"] or "",
         "keywords": [k for k in [industry, region] if k],
-        "summary": f"{region} · {industry} · {row['bid_date'] or ''} · {row['status'] or ''}".strip(" ·"),
+        "summary": f"{region} · {industry} · {row['bid_date'] or ''} · {row['status'] or ''}".strip(
+            " ·"
+        ),
         "source": "bid_telecom.db",
         "owner_user_id": owner_tag,
         "db_id": rid,
@@ -181,8 +195,8 @@ def load_projects_from_db(limit: int = 80, prefer_real: bool = True) -> dict:
             "using_json_fallback": True,
         }
     try:
-        conn = sqlite3.connect(TELECOM_DB)
-        conn.row_factory = sqlite3.Row
+        conn = _db.get_conn()
+        conn.set_dict_mode(True)
         if prefer_real and stats.get("real_count", 0) > 0:
             rows = conn.execute(
                 "SELECT * FROM bid_projects WHERE owner_user_id=? "
@@ -195,7 +209,9 @@ def load_projects_from_db(limit: int = 80, prefer_real: bool = True) -> dict:
                 "SELECT * FROM bid_projects ORDER BY bid_date DESC, id DESC LIMIT ?",
                 (limit,),
             ).fetchall()
-            source = "bid_telecom.db" + (":demo" if stats.get("real_count", 0) == 0 else "")
+            source = "bid_telecom.db" + (
+                ":demo" if stats.get("real_count", 0) == 0 else ""
+            )
         conn.close()
         projects = [_row_to_project(r) for r in rows]
         return {
@@ -337,7 +353,11 @@ def bid_status() -> dict:
     if stats.get("real_count", 0) > 0:
         hints.append(
             f"bid_telecom.db 真实标讯 {stats['real_count']} 条"
-            + (f"（最近刷新 {stats.get('last_refresh')}）" if stats.get("last_refresh") else "")
+            + (
+                f"（最近刷新 {stats.get('last_refresh')}）"
+                if stats.get("last_refresh")
+                else ""
+            )
         )
     elif stats.get("row_count", 0) > 0:
         hints.append(
@@ -350,7 +370,9 @@ def bid_status() -> dict:
     elif not os.path.isdir(bid_root):
         hints.append(f"bid_pipeline_root 不存在: {bid_root}，读写将回落本地 demo")
     if configured_knowledge and knowledge == KNOWLEDGE_DIR:
-        hints.append("knowledge_sync_folder 父目录不可用，正向同步降级到本地 knowledge/")
+        hints.append(
+            "knowledge_sync_folder 父目录不可用，正向同步降级到本地 knowledge/"
+        )
     if not os.path.exists(projects_path) and not stats.get("row_count"):
         hints.append("项目清单缺失，首次拉取将自动写入演示项目")
     lib_count = 0
@@ -363,7 +385,8 @@ def bid_status() -> dict:
         "knowledge_sync_folder": knowledge,
         "projects_path": projects_path,
         "telecom_db": TELECOM_DB,
-        "bid_list_exists": os.path.exists(projects_path) or bool(stats.get("row_count")),
+        "bid_list_exists": os.path.exists(projects_path)
+        or bool(stats.get("row_count")),
         "knowledge_doc_count": lib_count,
         "can_sync": True,
         "can_fetch_themes": True,
@@ -419,14 +442,23 @@ def _copy_article_to_knowledge(article: dict, root: str) -> Optional[dict]:
     idx.append(entry)
     with open(index_file, "w", encoding="utf-8") as f:
         json.dump(idx, f, ensure_ascii=False, indent=2)
-    return {"id": article.get("id"), "title": article.get("title"), "category": tag_safe, "path": dst}
+    return {
+        "id": article.get("id"),
+        "title": article.get("title"),
+        "category": tag_safe,
+        "path": dst,
+    }
 
 
 def sync_knowledge_to_bid(only_reviewed: bool = True) -> dict:
     """正向推送：已质检稿件 → 标书知识库。"""
     root = resolve_knowledge_root()
     articles = agents.list_articles()
-    reviewed = [a for a in articles if a.get("review_pass")] if only_reviewed else list(articles)
+    reviewed = (
+        [a for a in articles if a.get("review_pass")]
+        if only_reviewed
+        else list(articles)
+    )
     if only_reviewed and not reviewed:
         # 演示友好：无过审稿时仍同步全部，并标注
         reviewed = list(articles)
@@ -546,6 +578,7 @@ def fetch_bid_project_themes() -> dict:
     if not themes:
         try:
             import data_feedback
+
             r = data_feedback.analyze_topic_data_with_nl2sql()
             hot = r.get("bid_stats", {}).get("hot_industries", [])
             themes = [(h["industry"], h["amount"]) for h in hot]
@@ -556,14 +589,16 @@ def fetch_bid_project_themes() -> dict:
 
     suggestions = []
     for ind, cnt in themes[:8]:
-        suggestions.append({
-            "industry": ind,
-            "topic": f"{ind}领域投标项目技术方案与中标趋势分析",
-            "topic_lead_gen": f"{ind}赛道政企获客内容包：案例故事+跟进话术",
-            "topic_brief": f"{ind}行业综述：浙江电信市场机会与可沉淀知识要点",
-            "signal": cnt,
-            "campaign_templates": ["lead_gen", "industry_brief"],
-        })
+        suggestions.append(
+            {
+                "industry": ind,
+                "topic": f"{ind}领域投标项目技术方案与中标趋势分析",
+                "topic_lead_gen": f"{ind}赛道政企获客内容包：案例故事+跟进话术",
+                "topic_brief": f"{ind}行业综述：浙江电信市场机会与可沉淀知识要点",
+                "signal": cnt,
+                "campaign_templates": ["lead_gen", "industry_brief"],
+            }
+        )
     op_logger.log("bid_fetch", f"生成垂直领域选题 {len(suggestions)} 个")
     return {
         "themes": [{"industry": ind, "count": cnt} for ind, cnt in themes],
@@ -578,7 +613,9 @@ def fetch_bid_project_themes() -> dict:
     }
 
 
-def write_themes_to_topic_pool(suggestions: Optional[list] = None, limit: int = 6) -> dict:
+def write_themes_to_topic_pool(
+    suggestions: Optional[list] = None, limit: int = 6
+) -> dict:
     """赛道选题建议 → 写入内容工厂选题池。"""
     import topic_collector
 
@@ -597,10 +634,17 @@ def write_themes_to_topic_pool(suggestions: Optional[list] = None, limit: int = 
         entry = {
             "id": tid,
             "title": title,
-            "summary": s.get("summary") or f"来自标书赛道「{s.get('industry', '')}」· 信号 {s.get('signal', '')}",
+            "summary": s.get("summary")
+            or f"来自标书赛道「{s.get('industry', '')}」· 信号 {s.get('signal', '')}",
             "source": "bid_pipeline",
             "industry": s.get("industry", ""),
-            "scores": {"受众价值": 8, "实操落地性": 7, "竞品稀缺度": 8, "流量潜力": 7, "市场热度": 8},
+            "scores": {
+                "受众价值": 8,
+                "实操落地性": 7,
+                "竞品稀缺度": 8,
+                "流量潜力": 7,
+                "市场热度": 8,
+            },
             "total_score": 38,
             "status": "candidate",
             "created_at": datetime.datetime.now().isoformat(),
@@ -643,7 +687,9 @@ def theme_to_campaign(
                 f"制作政企获客内容包与跟进话术，支撑投标前后触达"
             )
     elif template == "industry_brief":
-        goal = f"围绕「{industry}」赛道输出行业综述长文与可入库知识要点，服务标书材料沉淀"
+        goal = (
+            f"围绕「{industry}」赛道输出行业综述长文与可入库知识要点，服务标书材料沉淀"
+        )
     else:
         goal = f"围绕「{industry}」赛道制作政企获客内容包与跟进话术，支撑投标前后触达"
     camp = camp_runner.start_campaign(
@@ -677,7 +723,9 @@ def list_knowledge_index(limit: int = 40) -> dict:
         for dirpath, _dirs, files in os.walk(root):
             if "index.json" in files:
                 try:
-                    with open(os.path.join(dirpath, "index.json"), "r", encoding="utf-8") as f:
+                    with open(
+                        os.path.join(dirpath, "index.json"), "r", encoding="utf-8"
+                    ) as f:
                         idx = json.load(f) or []
                     for it in idx:
                         it = dict(it)
@@ -688,13 +736,17 @@ def list_knowledge_index(limit: int = 40) -> dict:
             for fn in files:
                 if fn.endswith(".md") and fn != "README.md":
                     rel = os.path.relpath(os.path.join(dirpath, fn), root)
-                    if not any(i.get("file") == fn or i.get("title") in fn for i in items):
-                        items.append({
-                            "id": hashlib.md5(rel.encode()).hexdigest()[:10],
-                            "title": fn,
-                            "file": fn,
-                            "category": os.path.basename(dirpath),
-                            "summary": "",
-                        })
+                    if not any(
+                        i.get("file") == fn or i.get("title") in fn for i in items
+                    ):
+                        items.append(
+                            {
+                                "id": hashlib.md5(rel.encode()).hexdigest()[:10],
+                                "title": fn,
+                                "file": fn,
+                                "category": os.path.basename(dirpath),
+                                "summary": "",
+                            }
+                        )
     items = items[-limit:]
     return {"root": root, "count": len(items), "items": items}

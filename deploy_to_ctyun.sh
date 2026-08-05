@@ -24,6 +24,13 @@ PORT_WEB=8090       # web_server.py (FastAPI)
 # Nginx
 NGINX_HTTP_PORT=80
 
+# PostgreSQL
+PG_DB_NAME="chengjuntai"
+PG_DB_USER="chengjuntai"
+PG_DB_PASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 24)
+PG_DB_HOST="127.0.0.1"
+PG_DB_PORT=5432
+
 # ==================== 颜色 ====================
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -86,13 +93,16 @@ if [ "$IS_UBUNTU" = true ]; then
     apt-get update -qq
     apt-get install -y -qq software-properties-common curl wget git nginx \
         python3.12 python3.12-venv python3.12-dev \
-        build-essential libffi-dev libssl-dev 2>/dev/null || {
+        build-essential libffi-dev libssl-dev \
+        postgresql postgresql-contrib libpq-dev 2>/dev/null || {
         # Ubuntu 20.04 可能需要 deadsnakes PPA
         warn "系统源无 Python 3.12，添加 deadsnakes PPA..."
         add-apt-repository -y ppa:deadsnakes/ppa
         apt-get update -qq
         apt-get install -y -qq python3.12 python3.12-venv python3.12-dev
     }
+    # 确保 PostgreSQL 也安装（PPA 添加后重试）
+    apt-get install -y -qq postgresql postgresql-contrib libpq-dev 2>/dev/null || true
     PYTHON_BIN="python3.12"
 elif [ "$IS_CENTOS" = true ]; then
     # CentOS 7/8/9
@@ -103,7 +113,8 @@ elif [ "$IS_CENTOS" = true ]; then
     fi
     $PKG_MGR install -y -q epel-release 2>/dev/null || true
     $PKG_MGR install -y -q curl wget git nginx gcc make \
-        python3 python3-devel python3-pip redhat-rpm-config libffi-devel openssl-devel 2>/dev/null
+        python3 python3-devel python3-pip redhat-rpm-config libffi-devel openssl-devel \
+        postgresql-server postgresql-contrib postgresql-devel libpq-devel 2>/dev/null
     # CentOS 默认 Python 3.6/3.9，尝试安装 3.12
     if $PKG_MGR module list python3.12 &>/dev/null 2>&1; then
         $PKG_MGR module enable -y python3.12
@@ -180,13 +191,60 @@ $PIP install -q \
     "numpy>=1.26" \
     "scikit-learn>=1.4" \
     pydantic>=2.0 \
+    psycopg2-binary>=2.9 \
     -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 
 info "所有 Python 依赖安装完成"
 
 # 验证关键包
-$PYTHON -c "import flask, aiohttp, requests, cachetools, yaml, fastapi, uvicorn, numpy, sklearn, reportlab; print('依赖验证通过')" || \
+$PYTHON -c "import flask, aiohttp, requests, cachetools, yaml, fastapi, uvicorn, numpy, sklearn, reportlab, psycopg2; print('依赖验证通过')" || \
     error "依赖安装验证失败"
+
+# ==================== 4.5 初始化 PostgreSQL ====================
+step "4.5 初始化 PostgreSQL 数据库"
+
+# 确保 PostgreSQL 已启动
+if [ "$IS_UBUNTU" = true ]; then
+    systemctl start postgresql 2>/dev/null || systemctl start postgresql@14-main 2>/dev/null || true
+    systemctl enable postgresql 2>/dev/null || true
+elif [ "$IS_CENTOS" = true ]; then
+    # CentOS 可能需要先初始化
+    if [ ! -f /var/lib/pgsql/data/PG_VERSION ]; then
+        postgresql-setup --initdb 2>/dev/null || /usr/pgsql-*/bin/postgresql-* setup --initdb 2>/dev/null || true
+    fi
+    systemctl start postgresql 2>/dev/null || true
+    systemctl enable postgresql 2>/dev/null || true
+fi
+
+sleep 2
+
+# 检查 PostgreSQL 是否运行
+if ! su - postgres -c "psql -c '\q'" 2>/dev/null; then
+    error "PostgreSQL 启动失败，请检查: systemctl status postgresql"
+fi
+info "PostgreSQL 服务已启动"
+
+# 创建数据库和用户
+su - postgres -c "psql -tc \"SELECT 1 FROM pg_roles WHERE rolname='$PG_DB_USER'\"" | grep -q 1 || \
+    su - postgres -c "psql -c \"CREATE USER $PG_DB_USER WITH PASSWORD '$PG_DB_PASS';\"" 2>/dev/null
+su - postgres -c "psql -tc \"SELECT 1 FROM pg_database WHERE datname='$PG_DB_NAME'\"" | grep -q 1 || \
+    su - postgres -c "createdb -O $PG_DB_USER $PG_DB_NAME"
+su - postgres -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE $PG_DB_NAME TO $PG_DB_USER;\"" 2>/dev/null
+
+# 确保 pg_hba.conf 允许 password 认证（本地 TCP 连接）
+PG_HBA=$(su - postgres -c "psql -tA -c 'SHOW hba_file'")
+if [ -f "$PG_HBA" ]; then
+    if ! grep -q "host.*$PG_DB_NAME.*$PG_DB_USER.*md5\|host.*$PG_DB_NAME.*$PG_DB_USER.*scram" "$PG_HBA"; then
+        echo "host    $PG_DB_NAME    $PG_DB_USER    127.0.0.1/32    md5" >> "$PG_HBA"
+        systemctl reload postgresql 2>/dev/null || true
+        info "pg_hba.conf 已更新（允许密码认证）"
+    fi
+fi
+
+# 构造 DATABASE_URL
+DATABASE_URL="postgresql://${PG_DB_USER}:${PG_DB_PASS}@${PG_DB_HOST}:${PG_DB_PORT}/${PG_DB_NAME}"
+info "PostgreSQL 数据库已创建: $PG_DB_NAME (user: $PG_DB_USER)"
+warn "数据库密码已生成，见 CREDENTIALS.txt"
 
 # ==================== 5. 生成生产环境配置 ====================
 step "5. 生成生产环境配置 (config.yaml)"
@@ -288,11 +346,25 @@ article:
   require_code_block: true
 
 reserved_ports: [8082, 8765]
+
+database:
+  engine: "postgresql"
+  pg_host: "${PG_DB_HOST}"
+  pg_port: ${PG_DB_PORT}
+  pg_db: "${PG_DB_NAME}"
+  pg_user: "${PG_DB_USER}"
+  pg_password: "${PG_DB_PASS}"
+  sqlite_path: "bid_telecom.db"
 YAMLEOF
 
 # 替换占位符
 sed -i "s|\${API_TOKEN}|$API_TOKEN|g" "$CONFIG_FILE"
 sed -i "s|\${WEB_PASSWORD}|$WEB_PASSWORD|g" "$CONFIG_FILE"
+sed -i "s|\${PG_DB_HOST}|$PG_DB_HOST|g" "$CONFIG_FILE"
+sed -i "s|\${PG_DB_PORT}|$PG_DB_PORT|g" "$CONFIG_FILE"
+sed -i "s|\${PG_DB_NAME}|$PG_DB_NAME|g" "$CONFIG_FILE"
+sed -i "s|\${PG_DB_USER}|$PG_DB_USER|g" "$CONFIG_FILE"
+sed -i "s|\${PG_DB_PASS}|$PG_DB_PASS|g" "$CONFIG_FILE"
 
 chown $SERVICE_USER:$SERVICE_USER "$CONFIG_FILE"
 chmod 600 "$CONFIG_FILE"
@@ -313,6 +385,12 @@ $API_TOKEN
 #
 # Web 面板密码 (用户名 admin):
 $WEB_PASSWORD
+#
+# PostgreSQL 数据库:
+#   数据库: $PG_DB_NAME
+#   用户名: $PG_DB_USER
+#   密码:   $PG_DB_PASS
+#   连接串: $DATABASE_URL
 #
 # LLM API Key 尚未配置，请编辑 config.yaml 填入
 EOF
@@ -350,44 +428,79 @@ EOF
 chmod 600 "$USERS_FILE"
 info "用户密码已随机生成（见 CREDENTIALS.txt）"
 
-# ==================== 7. 初始化数据库 ====================
-step "7. 初始化数据库 (抓取浙江政采网真实数据)"
+# ==================== 7. 初始化数据库 (PostgreSQL) ====================
+step "7. 初始化 PostgreSQL 数据库 (建表 + 数据迁移)"
 
-# 先创建表结构（fetch_real_data.py 只导入数据，不建表）
-info "创建数据库表结构..."
+# 设置环境变量供 Python 脚本使用
+export DATABASE_URL="$DATABASE_URL"
+export PG_HOST="$PG_DB_HOST"
+export PG_PORT="$PG_DB_PORT"
+export PG_DB="$PG_DB_NAME"
+export PG_USER="$PG_DB_USER"
+export PG_PASSWORD="$PG_DB_PASS"
+
+cd "$APP_DIR"
+
+# 7.1 创建表结构
+info "创建 PostgreSQL 表结构..."
 $PYTHON -c "
-import sqlite3, os
-db_path = os.path.join('$APP_DIR', 'bid_telecom.db')
-conn = sqlite3.connect(db_path)
-conn.execute('''CREATE TABLE IF NOT EXISTS bid_projects (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    project_name TEXT,
-    industry TEXT,
-    region TEXT,
-    bid_date TEXT,
-    win_amount REAL,
-    status TEXT,
-    owner_user_id TEXT
-)''')
+import sys, os
+sys.path.insert(0, '$APP_DIR')
+os.environ['DATABASE_URL'] = '$DATABASE_URL'
+import db
+conn = db.get_conn()
+conn.execute(db.get_schema_ddl())
 conn.commit()
 conn.close()
-print('表 bid_projects 已就绪')
-"
+print('PostgreSQL 表 bid_projects 已就绪')
+" || error "PostgreSQL 建表失败"
 
-info "开始全量抓取...（预计 3~5 分钟）"
-cd "$APP_DIR"
-su -s /bin/bash $SERVICE_USER -c "$PYTHON $APP_DIR/fetch_real_data.py --full-rebuild" || {
-    warn "数据抓取失败，服务仍可启动（数据库为空）"
-    warn "可稍后手动执行: $PYTHON $APP_DIR/fetch_real_data.py --full-rebuild"
-}
-
-# 检查数据量
+# 7.2 如果有 SQLite 数据文件，迁移数据
 if [ -f "$APP_DIR/bid_telecom.db" ]; then
-    DB_COUNT=$($PYTHON -c "import sqlite3; print(sqlite3.connect('$APP_DIR/bid_telecom.db').execute('SELECT COUNT(*) FROM bid_projects').fetchone()[0])" 2>/dev/null || echo "0")
-    info "数据库记录数: $DB_COUNT 条"
+    info "检测到 SQLite 数据文件，开始迁移..."
+    $PYTHON "$APP_DIR/migrate_sqlite_to_pg.py" --source "$APP_DIR/bid_telecom.db" || {
+        warn "数据迁移失败，将尝试在线抓取"
+    }
+elif [ -f "$APP_DIR/content_factory/bid_telecom.db" ]; then
+    info "检测到 content_factory 下的 SQLite 数据文件，开始迁移..."
+    $PYTHON "$APP_DIR/migrate_sqlite_to_pg.py" --source "$APP_DIR/content_factory/bid_telecom.db" || {
+        warn "数据迁移失败，将尝试在线抓取"
+    }
 else
-    warn "数据库文件不存在，服务将以空库启动"
+    info "未检测到 SQLite 数据文件，尝试在线抓取..."
 fi
+
+# 7.3 如果迁移后仍无数据，尝试在线抓取
+PG_COUNT=$($PYTHON -c "
+import sys, os
+sys.path.insert(0, '$APP_DIR')
+os.environ['DATABASE_URL'] = '$DATABASE_URL'
+import db
+conn = db.get_conn()
+cur = conn.execute('SELECT COUNT(*) FROM bid_projects')
+print(cur.fetchone()[0])
+conn.close()
+" 2>/dev/null || echo "0")
+
+if [ "$PG_COUNT" -eq 0 ] 2>/dev/null; then
+    info "数据库为空，开始全量抓取...（预计 3~5 分钟）"
+    su -s /bin/bash $SERVICE_USER -c "cd $APP_DIR && DATABASE_URL='$DATABASE_URL' $PYTHON $APP_DIR/fetch_real_data.py --full-rebuild" || {
+        warn "数据抓取失败，服务仍可启动（数据库为空）"
+        warn "可稍后手动执行: $PYTHON $APP_DIR/fetch_real_data.py --full-rebuild"
+    }
+    PG_COUNT=$($PYTHON -c "
+import sys, os
+sys.path.insert(0, '$APP_DIR')
+os.environ['DATABASE_URL'] = '$DATABASE_URL'
+import db
+conn = db.get_conn()
+cur = conn.execute('SELECT COUNT(*) FROM bid_projects')
+print(cur.fetchone()[0])
+conn.close()
+" 2>/dev/null || echo "0")
+fi
+
+info "PostgreSQL 数据库记录数: $PG_COUNT 条"
 
 # ==================== 8. 创建 systemd 服务 ====================
 step "8. 创建 systemd 服务 (3 个服务)"
@@ -396,7 +509,7 @@ step "8. 创建 systemd 服务 (3 个服务)"
 cat > /etc/systemd/system/teleagent-backend.service << EOF
 [Unit]
 Description=NL2SQL TeleAgent Backend (Flask, port $PORT_BACKEND)
-After=network.target
+After=network.target postgresql.service
 
 [Service]
 Type=simple
@@ -408,6 +521,7 @@ RestartSec=5
 StandardOutput=journal
 StandardError=journal
 Environment=PYTHONUNBUFFERED=1
+Environment=DATABASE_URL=$DATABASE_URL
 
 [Install]
 WantedBy=multi-user.target
@@ -429,6 +543,7 @@ RestartSec=5
 StandardOutput=journal
 StandardError=journal
 Environment=PYTHONUNBUFFERED=1
+Environment=DATABASE_URL=$DATABASE_URL
 
 [Install]
 WantedBy=multi-user.target
@@ -450,6 +565,7 @@ RestartSec=5
 StandardOutput=journal
 StandardError=journal
 Environment=PYTHONUNBUFFERED=1
+Environment=DATABASE_URL=$DATABASE_URL
 
 [Install]
 WantedBy=multi-user.target
@@ -618,10 +734,13 @@ cat << SUMMARY
 ║    后端 (Flask):   $PORT_BACKEND
 ║    MCP (aiohttp):  $PORT_MCP
 ║    Web (FastAPI):  $PORT_WEB
+║    PostgreSQL:     $PG_DB_PORT
 ║
 ║  凭据 (见 $CRED_FILE):
-║    API Token:  $API_TOKEN
-║    Web 密码:   $WEB_PASSWORD
+║    API Token:    $API_TOKEN
+║    Web 密码:     $WEB_PASSWORD
+║    数据库:       PostgreSQL $PG_DB_NAME@$PG_DB_HOST:$PG_DB_PORT (user: $PG_DB_USER)
+║    DB 连接串:    $DATABASE_URL
 ║
 ║  管理命令:
 ║    重启后端:  systemctl restart teleagent-backend
@@ -630,6 +749,8 @@ cat << SUMMARY
 ║    查看日志:  journalctl -u teleagent-backend -f
 ║    重启Nginx: systemctl restart nginx
 ║    手动抓取:  $PYTHON $APP_DIR/fetch_real_data.py --full-rebuild
+║    DB 迁移:   $PYTHON $APP_DIR/migrate_sqlite_to_pg.py
+║    DB 状态:   systemctl status postgresql
 ║
 ║  下一步:
 ║    1. LLM: 优先 XIRANG_API_KEY（主办方星辰/息壤）；interim 可用 SenseNova/百炼

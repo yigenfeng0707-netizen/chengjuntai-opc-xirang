@@ -4,6 +4,7 @@
 部署优先执行，校验内容工厂全部运行条件，输出 environment_check.log 自检报告。
 start.bat 启动流程优先执行环境检测，不满足条件阻断运行并提供修复方案。
 """
+
 import os
 import sys
 import json
@@ -30,8 +31,10 @@ def check_python_version():
     """1. 检测 Python 版本，推荐 3.11~3.13"""
     major, minor = sys.version_info[0], sys.version_info[1]
     ver_str = f"{major}.{minor}.{sys.version_info[2]}"
-    ok = (major == 3 and 11 <= minor <= 13)
-    fix = "" if ok else "请安装 Python 3.11~3.13，下载: https://www.python.org/downloads/"
+    ok = major == 3 and 11 <= minor <= 13
+    fix = (
+        "" if ok else "请安装 Python 3.11~3.13，下载: https://www.python.org/downloads/"
+    )
     return {"item": "Python版本", "value": ver_str, "pass": ok, "fix": fix}
 
 
@@ -47,6 +50,7 @@ def check_disk_space():
 def check_pypi_mirror():
     """3. 测试国内 PyPI 镜像连通性（阿里云）"""
     import urllib.request
+
     url = "https://mirrors.aliyun.com/pypi/simple/"
     try:
         urllib.request.urlopen(url, timeout=5)
@@ -55,16 +59,32 @@ def check_pypi_mirror():
     except Exception as e:
         ok = False
         fix = f"PyPI 镜像不可达: {e}；可换源: pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/"
-    return {"item": "PyPI镜像连通", "value": "aliyun" if ok else "失败", "pass": ok, "fix": fix}
+    return {
+        "item": "PyPI镜像连通",
+        "value": "aliyun" if ok else "失败",
+        "pass": ok,
+        "fix": fix,
+    }
 
 
 def check_venv():
     """4. 识别虚拟环境（可选，复用/重建）"""
-    in_venv = hasattr(sys, "real_prefix") or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix)
+    in_venv = hasattr(sys, "real_prefix") or (
+        hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix
+    )
     exe = sys.executable
     ok = True
-    fix = "" if in_venv else "未使用虚拟环境(可选)；建议: python -m venv .venv && .venv\\Scripts\\activate"
-    return {"item": "虚拟环境", "value": "已启用" if in_venv else f"全局({exe})", "pass": ok, "fix": fix}
+    fix = (
+        ""
+        if in_venv
+        else "未使用虚拟环境(可选)；建议: python -m venv .venv && .venv\\Scripts\\activate"
+    )
+    return {
+        "item": "虚拟环境",
+        "value": "已启用" if in_venv else f"全局({exe})",
+        "pass": ok,
+        "fix": fix,
+    }
 
 
 def check_port_conflict():
@@ -81,9 +101,17 @@ def check_port_conflict():
             conflicts.append(p)
     # 8090 冲突会阻断 web，保留端口占用属正常
     web_ok = web_port not in conflicts
-    fix = "" if web_ok else f"Web面板端口 {web_port} 被占用，请修改 config.yaml 的 web_port"
-    return {"item": "端口占用(Web:8090)", "value": f"冲突端口:{conflicts}" if conflicts else "无冲突",
-            "pass": web_ok, "fix": fix}
+    fix = (
+        ""
+        if web_ok
+        else f"Web面板端口 {web_port} 被占用，请修改 config.yaml 的 web_port"
+    )
+    return {
+        "item": "端口占用(Web:8090)",
+        "value": f"冲突端口:{conflicts}" if conflicts else "无冲突",
+        "pass": web_ok,
+        "fix": fix,
+    }
 
 
 def check_bid_pipeline():
@@ -91,6 +119,7 @@ def check_bid_pipeline():
     bid_root = ""
     try:
         import yaml
+
         cfg_path = os.path.join(ROOT, "config.yaml")
         with open(cfg_path, "r", encoding="utf-8") as f:
             cfg = yaml.safe_load(f) or {}
@@ -98,22 +127,35 @@ def check_bid_pipeline():
     except Exception:
         bid_root = ""
     telecom_db = os.path.join(os.path.dirname(ROOT), "bid_telecom.db")
-    if os.path.exists(telecom_db):
-        try:
-            import sqlite3
-            n = sqlite3.connect(telecom_db).execute("SELECT COUNT(*) FROM bid_projects").fetchone()[0]
-            if n > 0:
-                return {
-                    "item": "BidAutoPipeline目录",
-                    "value": f"bid_telecom.db:{n}行",
-                    "pass": True,
-                    "fix": "主路径为真实/缓存库；刷新: python scripts/refresh_real_bids.py --quick",
-                }
-        except Exception:
-            pass
+    # Check unified DB (PostgreSQL or SQLite)
+    try:
+        import sys as _sys
+
+        _repo_root = os.path.dirname(ROOT)
+        if _repo_root not in _sys.path:
+            _sys.path.insert(0, _repo_root)
+        import db as _db
+
+        conn = _db.get_conn()
+        n = conn.execute("SELECT COUNT(*) FROM bid_projects").fetchone()[0]
+        conn.close()
+        if n > 0:
+            return {
+                "item": "BidAutoPipeline目录",
+                "value": f"{_db.get_engine()}:{n}行",
+                "pass": True,
+                "fix": "主路径为真实/缓存库；刷新: python scripts/refresh_real_bids.py --quick",
+            }
+    except Exception:
+        pass
     local_demo = os.path.join(ROOT, "data", "bid_projects.json")
     if bid_root and os.path.isdir(bid_root):
-        return {"item": "BidAutoPipeline目录", "value": bid_root, "pass": True, "fix": ""}
+        return {
+            "item": "BidAutoPipeline目录",
+            "value": bid_root,
+            "pass": True,
+            "fix": "",
+        }
     if os.path.exists(local_demo):
         return {
             "item": "BidAutoPipeline目录",
@@ -131,8 +173,14 @@ def check_bid_pipeline():
 
 def check_dependencies():
     """检测关键依赖是否已安装"""
-    required = {"yaml": "pyyaml", "feedparser": "feedparser", "numpy": "numpy",
-                "sklearn": "scikit-learn", "fastapi": "fastapi", "reportlab": "reportlab"}
+    required = {
+        "yaml": "pyyaml",
+        "feedparser": "feedparser",
+        "numpy": "numpy",
+        "sklearn": "scikit-learn",
+        "fastapi": "fastapi",
+        "reportlab": "reportlab",
+    }
     missing = []
     for mod, pkg in required.items():
         try:
@@ -140,8 +188,17 @@ def check_dependencies():
         except ImportError:
             missing.append(pkg)
     ok = len(missing) == 0
-    fix = "" if ok else f"缺失依赖:{missing}；执行: pip install -r requirements -i https://mirrors.aliyun.com/pypi/simple/"
-    return {"item": "Python依赖", "value": "齐全" if ok else f"缺{len(missing)}项", "pass": ok, "fix": fix}
+    fix = (
+        ""
+        if ok
+        else f"缺失依赖:{missing}；执行: pip install -r requirements -i https://mirrors.aliyun.com/pypi/simple/"
+    )
+    return {
+        "item": "Python依赖",
+        "value": "齐全" if ok else f"缺{len(missing)}项",
+        "pass": ok,
+        "fix": fix,
+    }
 
 
 def check_nl2sql_service():
@@ -156,7 +213,12 @@ def check_nl2sql_service():
     except OSError:
         ok = False
         fix = "NL2SQL MCP服务(8765)未运行，数据回流查询投标历史将降级；启动: 双击 ../scripts/start_nl2sql_demo.bat"
-    return {"item": "NL2SQL联动服务", "value": "在线" if ok else "离线", "pass": True, "fix": fix}
+    return {
+        "item": "NL2SQL联动服务",
+        "value": "在线" if ok else "离线",
+        "pass": True,
+        "fix": fix,
+    }
 
 
 def run_all():
@@ -184,7 +246,14 @@ def run_all():
         if not c["pass"]:
             block = True
     lines.append("")
-    lines.append("结论: " + ("环境满足全部运行条件 ✅" if not block else "存在阻断项 ❌，请按修复建议处理"))
+    lines.append(
+        "结论: "
+        + (
+            "环境满足全部运行条件 ✅"
+            if not block
+            else "存在阻断项 ❌，请按修复建议处理"
+        )
+    )
     report = "\n".join(lines)
     with open(LOG_FILE, "w", encoding="utf-8") as f:
         f.write(report)

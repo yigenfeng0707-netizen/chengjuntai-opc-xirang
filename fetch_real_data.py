@@ -18,19 +18,25 @@
   status        <- 公告类型（采购项目公告=进行中, 采购结果公告=中标）
   owner_user_id <- "real" (真实数据标记)
 """
+
 import requests
 import json
 import re
 import os
 import sys
-import sqlite3
 import time
 import random
 import datetime
 import argparse
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "bid_telecom.db")
+
+# Unified DB layer: PostgreSQL (production) or SQLite (local fallback)
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+import db as _db
+
+DB_PATH = _db.DB_PATH  # kept for backward compat (SQLite path / display)
 JSON_PATH = os.path.join(BASE_DIR, "logs", "real_projects.json")
 LOG_PATH = os.path.join(BASE_DIR, "logs", "fetch.log")
 META_PATH = os.path.join(BASE_DIR, "logs", "fetch_meta.json")
@@ -63,81 +69,385 @@ DEFAULT_PAGE_SIZE = 50
 DEFAULT_MAX_PAGES = 6
 DEFAULT_DAYS_BACK = 730
 SEARCH_KEYWORDS = [
-    "信息化", "信息系统", "软件", "网络安全", "云计算", "通信",
-    "5G", "智慧城市", "数据中心", "机房", "视频监控", "物联网",
-    "数字政府", "电子政务", "大数据", "服务器", "弱电", "综合布线",
-    "人工智能", "智慧校园", "远程医疗", "数字乡村", "融媒体", "区块链",
-    "等保", "态势感知", "云平台", "政务云", "雪亮工程", "城市大脑",
+    "信息化",
+    "信息系统",
+    "软件",
+    "网络安全",
+    "云计算",
+    "通信",
+    "5G",
+    "智慧城市",
+    "数据中心",
+    "机房",
+    "视频监控",
+    "物联网",
+    "数字政府",
+    "电子政务",
+    "大数据",
+    "服务器",
+    "弱电",
+    "综合布线",
+    "人工智能",
+    "智慧校园",
+    "远程医疗",
+    "数字乡村",
+    "融媒体",
+    "区块链",
+    "等保",
+    "态势感知",
+    "云平台",
+    "政务云",
+    "雪亮工程",
+    "城市大脑",
 ]
 
 # 通信/信息化关键词 -> 行业分类
 INDUSTRY_KEYWORDS = {
-    "通信工程": ["通信工程", "通信设施", "通信线路", "光纤", "光缆", "宽带", "基站",
-                 "5G", "移动通信", "电信", "应急通信", "通信网络", "弱电", "综合布线",
-                 "铁塔", "微波", "卫星通信", "集群通信", "光传输", "传输网", "接入网",
-                 "通信电源", "机房动环"],
-    "政企信息化": ["信息化", "信息系统", "信息工程", "数字化", "电子政务", "数字政府",
-                  "政务云", "办公系统", "管理平台", "业务系统", "应用系统", "软件开发",
-                  "软件采购", "系统集成", "数据治理", "大数据", "数据平台", "数据库",
-                  "智能化", "IT", "运维", "运维服务", "维保", "数字档案", "电子证照",
-                  "政务大厅", "一网通办", "最多跑一次", "数据交换", "数据共享",
-                  "中间件", "OA", "ERP", "财务系统", "审批系统", "电子招投标",
-                  "信息化设备",
-                  "信息中心",
-                  "软硬件",
-                  "系统建设",
-                  "系统运维",
-                  "数字化转型"],
-    "云服务": ["云平台", "云计算", "云服务", "云资源", "云主机", "云存储",
-              "政务云", "公有云", "私有云", "混合云", "云迁移", "云托管",
-              "容器云", "微服务", "DevOps", "云网融合"],
-    "网络安全": ["网络安全", "信息安全", "安全设备", "防火墙", "态势感知",
-                "等级保护", "密评", "安全审计", "安全建设", "护网",
-                "入侵检测", "WAF", "数据安全", "密码", "保密", "零信任",
-                "安全运营", "SOC", "SIEM", "漏扫", "渗透"],
-    "物联网": ["物联网", "传感器", "RFID", "智能感知", "NB-IoT", "LoRa",
-              "智慧传感", "物联感知", "边缘计算", "工业互联网"],
-    "IDC数据中心": ["数据中心", "IDC", "机房", "服务器", "存储设备", "机柜",
-                   "UPS", "微模块", "动环", "供配电", "精密空调", "冷通道",
-                   "综合布线", "机房改造", "机架", "算力", "智算中心"],
-    "智慧城市": ["智慧", "视频监控", "安防", "监控", "天网", "雪亮工程",
-                "智能交通", "智慧停车", "电子警察", "卡口", "城市大脑",
-                "智慧城管", "智慧社区", "智慧消防", "智慧水务", "智慧环保",
-                "智慧燃气", "智慧供热", "智慧路灯", "数字孪生"],
-    "视频会议": ["视频会议", "融合通信", "指挥调度", "会议系统", "录播",
-                "远程会议", "协作平台", "无纸化会议", "大屏", "显示系统",
-                "音视频", "扩声", "LED", "投影"],
-    "智慧教育": ["智慧校园", "教育信息化", "在线教育", "智慧课堂", "远程教育",
-                "数字校园", "智慧教育", "教育云", "微课", "慕课", "MOOC",
-                "虚拟仿真", "教学平台", "学习平台", "教育资源"],
-    "智慧医疗": ["智慧医疗", "远程医疗", "医院信息化", "电子病历", "健康大数据",
-                "医疗云", "智慧医院", "互联网医院", "医疗物联网", "PACS",
-                "HIS", "LIS", "智慧后勤", "智慧病房", "移动护理"],
-    "数字乡村": ["数字乡村", "农村信息化", "智慧农业", "数字农业", "乡村振兴",
-                "智慧农业", "农业大数据", "农产品溯源", "农村电商"],
-    "融媒体": ["融媒体", "广电", "数字电视", "广播电视", "应急广播",
-              "播控平台", "全媒体", "新闻发布", "宣传矩阵"],
-    "人工智能": ["人工智能", "AI", "智能算法", "机器学习", "深度学习",
-               "大模型", "智能问答", "智能检索", "知识图谱", "NLP",
-               "计算机视觉", "语音识别", "智能推荐", "AIGC", "智能体",
-               "智能分析", "智能识别"],
+    "通信工程": [
+        "通信工程",
+        "通信设施",
+        "通信线路",
+        "光纤",
+        "光缆",
+        "宽带",
+        "基站",
+        "5G",
+        "移动通信",
+        "电信",
+        "应急通信",
+        "通信网络",
+        "弱电",
+        "综合布线",
+        "铁塔",
+        "微波",
+        "卫星通信",
+        "集群通信",
+        "光传输",
+        "传输网",
+        "接入网",
+        "通信电源",
+        "机房动环",
+    ],
+    "政企信息化": [
+        "信息化",
+        "信息系统",
+        "信息工程",
+        "数字化",
+        "电子政务",
+        "数字政府",
+        "政务云",
+        "办公系统",
+        "管理平台",
+        "业务系统",
+        "应用系统",
+        "软件开发",
+        "软件采购",
+        "系统集成",
+        "数据治理",
+        "大数据",
+        "数据平台",
+        "数据库",
+        "智能化",
+        "IT",
+        "运维",
+        "运维服务",
+        "维保",
+        "数字档案",
+        "电子证照",
+        "政务大厅",
+        "一网通办",
+        "最多跑一次",
+        "数据交换",
+        "数据共享",
+        "中间件",
+        "OA",
+        "ERP",
+        "财务系统",
+        "审批系统",
+        "电子招投标",
+        "信息化设备",
+        "信息中心",
+        "软硬件",
+        "系统建设",
+        "系统运维",
+        "数字化转型",
+    ],
+    "云服务": [
+        "云平台",
+        "云计算",
+        "云服务",
+        "云资源",
+        "云主机",
+        "云存储",
+        "政务云",
+        "公有云",
+        "私有云",
+        "混合云",
+        "云迁移",
+        "云托管",
+        "容器云",
+        "微服务",
+        "DevOps",
+        "云网融合",
+    ],
+    "网络安全": [
+        "网络安全",
+        "信息安全",
+        "安全设备",
+        "防火墙",
+        "态势感知",
+        "等级保护",
+        "密评",
+        "安全审计",
+        "安全建设",
+        "护网",
+        "入侵检测",
+        "WAF",
+        "数据安全",
+        "密码",
+        "保密",
+        "零信任",
+        "安全运营",
+        "SOC",
+        "SIEM",
+        "漏扫",
+        "渗透",
+    ],
+    "物联网": [
+        "物联网",
+        "传感器",
+        "RFID",
+        "智能感知",
+        "NB-IoT",
+        "LoRa",
+        "智慧传感",
+        "物联感知",
+        "边缘计算",
+        "工业互联网",
+    ],
+    "IDC数据中心": [
+        "数据中心",
+        "IDC",
+        "机房",
+        "服务器",
+        "存储设备",
+        "机柜",
+        "UPS",
+        "微模块",
+        "动环",
+        "供配电",
+        "精密空调",
+        "冷通道",
+        "综合布线",
+        "机房改造",
+        "机架",
+        "算力",
+        "智算中心",
+    ],
+    "智慧城市": [
+        "智慧",
+        "视频监控",
+        "安防",
+        "监控",
+        "天网",
+        "雪亮工程",
+        "智能交通",
+        "智慧停车",
+        "电子警察",
+        "卡口",
+        "城市大脑",
+        "智慧城管",
+        "智慧社区",
+        "智慧消防",
+        "智慧水务",
+        "智慧环保",
+        "智慧燃气",
+        "智慧供热",
+        "智慧路灯",
+        "数字孪生",
+    ],
+    "视频会议": [
+        "视频会议",
+        "融合通信",
+        "指挥调度",
+        "会议系统",
+        "录播",
+        "远程会议",
+        "协作平台",
+        "无纸化会议",
+        "大屏",
+        "显示系统",
+        "音视频",
+        "扩声",
+        "LED",
+        "投影",
+    ],
+    "智慧教育": [
+        "智慧校园",
+        "教育信息化",
+        "在线教育",
+        "智慧课堂",
+        "远程教育",
+        "数字校园",
+        "智慧教育",
+        "教育云",
+        "微课",
+        "慕课",
+        "MOOC",
+        "虚拟仿真",
+        "教学平台",
+        "学习平台",
+        "教育资源",
+    ],
+    "智慧医疗": [
+        "智慧医疗",
+        "远程医疗",
+        "医院信息化",
+        "电子病历",
+        "健康大数据",
+        "医疗云",
+        "智慧医院",
+        "互联网医院",
+        "医疗物联网",
+        "PACS",
+        "HIS",
+        "LIS",
+        "智慧后勤",
+        "智慧病房",
+        "移动护理",
+    ],
+    "数字乡村": [
+        "数字乡村",
+        "农村信息化",
+        "智慧农业",
+        "数字农业",
+        "乡村振兴",
+        "智慧农业",
+        "农业大数据",
+        "农产品溯源",
+        "农村电商",
+    ],
+    "融媒体": [
+        "融媒体",
+        "广电",
+        "数字电视",
+        "广播电视",
+        "应急广播",
+        "播控平台",
+        "全媒体",
+        "新闻发布",
+        "宣传矩阵",
+    ],
+    "人工智能": [
+        "人工智能",
+        "AI",
+        "智能算法",
+        "机器学习",
+        "深度学习",
+        "大模型",
+        "智能问答",
+        "智能检索",
+        "知识图谱",
+        "NLP",
+        "计算机视觉",
+        "语音识别",
+        "智能推荐",
+        "AIGC",
+        "智能体",
+        "智能分析",
+        "智能识别",
+    ],
     "区块链": ["区块链", "电子证照", "电子印章", "电子合同", "可信存证"],
 }
 ALL_KEYWORDS = [kw for kws in INDUSTRY_KEYWORDS.values() for kw in kws]
 
 # 区县名标准化映射
 CITY_MAP = {
-    "杭州": ["杭州", "西湖", "余杭", "萧山", "临平", "富阳", "临安", "建德", "桐庐", "淳安", "滨江", "上城", "拱墅", "钱塘"],
-    "宁波": ["宁波", "鄞州", "海曙", "江北", "镇海", "北仑", "奉化", "余姚", "慈溪", "宁海", "象山"],
-    "温州": ["温州", "鹿城", "龙湾", "瓯海", "洞头", "瑞安", "乐清", "永嘉", "平阳", "苍南", "文成", "泰顺", "龙港"],
+    "杭州": [
+        "杭州",
+        "西湖",
+        "余杭",
+        "萧山",
+        "临平",
+        "富阳",
+        "临安",
+        "建德",
+        "桐庐",
+        "淳安",
+        "滨江",
+        "上城",
+        "拱墅",
+        "钱塘",
+    ],
+    "宁波": [
+        "宁波",
+        "鄞州",
+        "海曙",
+        "江北",
+        "镇海",
+        "北仑",
+        "奉化",
+        "余姚",
+        "慈溪",
+        "宁海",
+        "象山",
+    ],
+    "温州": [
+        "温州",
+        "鹿城",
+        "龙湾",
+        "瓯海",
+        "洞头",
+        "瑞安",
+        "乐清",
+        "永嘉",
+        "平阳",
+        "苍南",
+        "文成",
+        "泰顺",
+        "龙港",
+    ],
     "嘉兴": ["嘉兴", "南湖", "秀洲", "嘉善", "海盐", "海宁", "平湖", "桐乡"],
     "湖州": ["湖州", "吴兴", "南浔", "德清", "长兴", "安吉"],
     "绍兴": ["绍兴", "越城", "柯桥", "上虞", "诸暨", "嵊州", "新昌"],
-    "金华": ["金华", "婺城", "金东", "兰溪", "义乌", "东阳", "永康", "浦江", "武义", "磐安"],
+    "金华": [
+        "金华",
+        "婺城",
+        "金东",
+        "兰溪",
+        "义乌",
+        "东阳",
+        "永康",
+        "浦江",
+        "武义",
+        "磐安",
+    ],
     "衢州": ["衢州", "柯城", "衢江", "龙游", "江山", "常山", "开化"],
     "舟山": ["舟山", "定海", "普陀", "岱山", "嵊泗"],
-    "台州": ["台州", "椒江", "黄岩", "路桥", "温岭", "临海", "玉环", "三门", "天台", "仙居"],
-    "丽水": ["丽水", "莲都", "龙泉", "青田", "缙云", "遂昌", "松阳", "云和", "庆元", "景宁"],
+    "台州": [
+        "台州",
+        "椒江",
+        "黄岩",
+        "路桥",
+        "温岭",
+        "临海",
+        "玉环",
+        "三门",
+        "天台",
+        "仙居",
+    ],
+    "丽水": [
+        "丽水",
+        "莲都",
+        "龙泉",
+        "青田",
+        "缙云",
+        "遂昌",
+        "松阳",
+        "云和",
+        "庆元",
+        "景宁",
+    ],
 }
 
 
@@ -210,21 +520,8 @@ def load_status():
 def ensure_schema(conn=None):
     own = conn is None
     if own:
-        conn = sqlite3.connect(DB_PATH)
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS bid_projects (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            project_name TEXT,
-            industry TEXT,
-            region TEXT,
-            bid_date TEXT,
-            win_amount REAL,
-            status TEXT,
-            owner_user_id TEXT
-        )
-        """
-    )
+        conn = _db.get_conn()
+    conn.execute(_db.get_schema_ddl())
     conn.commit()
     if own:
         conn.close()
@@ -234,7 +531,7 @@ def db_stats(db_path=None):
     path = db_path or DB_PATH
     out = {
         "db_path": path,
-        "db_exists": os.path.exists(path),
+        "db_exists": True if _db.is_pg() else os.path.exists(path),
         "row_count": 0,
         "real_count": 0,
         "demo_count": 0,
@@ -247,15 +544,18 @@ def db_stats(db_path=None):
     out["last_refresh"] = meta.get("last_refresh")
     out["last_ok"] = meta.get("last_ok")
     out["last_error"] = meta.get("last_error")
-    if not os.path.exists(path):
+    if not _db.is_pg() and not os.path.exists(path):
         return out
     try:
-        out["mtime"] = datetime.datetime.fromtimestamp(
-            os.path.getmtime(path)
-        ).isoformat(timespec="seconds")
-        conn = sqlite3.connect(path)
+        if not _db.is_pg():
+            out["mtime"] = datetime.datetime.fromtimestamp(
+                os.path.getmtime(path)
+            ).isoformat(timespec="seconds")
+        conn = _db.get_conn()
         ensure_schema(conn)
-        out["row_count"] = conn.execute("SELECT COUNT(*) FROM bid_projects").fetchone()[0]
+        out["row_count"] = conn.execute("SELECT COUNT(*) FROM bid_projects").fetchone()[
+            0
+        ]
         out["real_count"] = conn.execute(
             "SELECT COUNT(*) FROM bid_projects WHERE owner_user_id=?", ("real",)
         ).fetchone()[0]
@@ -282,8 +582,10 @@ def _request_with_retry(method, url, headers=None, **kwargs):
             if resp.status_code == 200:
                 return resp
             if resp.status_code in (403, 429, 503):
-                wait = min(8, 1.5 ** attempt) + random.uniform(0.2, 0.8)
-                log(f"  [RETRY] HTTP {resp.status_code} {url[:60]}… wait {wait:.1f}s ({attempt}/{MAX_RETRIES})")
+                wait = min(8, 1.5**attempt) + random.uniform(0.2, 0.8)
+                log(
+                    f"  [RETRY] HTTP {resp.status_code} {url[:60]}… wait {wait:.1f}s ({attempt}/{MAX_RETRIES})"
+                )
                 time.sleep(wait)
                 last_err = f"HTTP {resp.status_code}"
                 continue
@@ -291,7 +593,7 @@ def _request_with_retry(method, url, headers=None, **kwargs):
             return resp
         except Exception as e:
             last_err = e
-            wait = min(8, 1.5 ** attempt) + random.uniform(0.2, 0.8)
+            wait = min(8, 1.5**attempt) + random.uniform(0.2, 0.8)
             log(f"  [RETRY] {e} wait {wait:.1f}s ({attempt}/{MAX_RETRIES})")
             time.sleep(wait)
     log(f"  [ERROR] exhausted retries: {last_err}")
@@ -307,15 +609,28 @@ def classify_industry(title):
 
 def extract_project_name(title):
     name = title
-    m = re.match(r'^[^关于]+关于(.+?)(?:的(?:公开招标|竞争性|采购|中标|成交|招标|结果|征集).*$)', title)
+    m = re.match(
+        r"^[^关于]+关于(.+?)(?:的(?:公开招标|竞争性|采购|中标|成交|招标|结果|征集).*$)",
+        title,
+    )
     if m:
         name = m.group(1)
     else:
-        for suffix in ["中标(成交)结果公告", "公开招标公告", "竞争性谈判公告",
-                        "采购招标公告", "采购公告", "招标公告", "结果公告",
-                        "成交公告", "中标公告", "合同公告", "公告"]:
+        for suffix in [
+            "中标(成交)结果公告",
+            "公开招标公告",
+            "竞争性谈判公告",
+            "采购招标公告",
+            "采购公告",
+            "招标公告",
+            "结果公告",
+            "成交公告",
+            "中标公告",
+            "合同公告",
+            "公告",
+        ]:
             if title.endswith(suffix):
-                name = title[:-len(suffix)].strip()
+                name = title[: -len(suffix)].strip()
                 break
     return name.strip()[:200]
 
@@ -335,12 +650,17 @@ def normalize_region(district_name, dist_label=""):
 
 def estimate_amount(title, method):
     """标题中提取金额，或按采购方式估算（仅当详情API不可用时回退用）"""
-    m = re.search(r'(\d+(?:\.\d+)?)\s*万', title)
+    m = re.search(r"(\d+(?:\.\d+)?)\s*万", title)
     if m:
         return float(m.group(1))
-    ranges = {"公开招标": (100, 2000), "竞争性磋商": (50, 500),
-              "竞争性谈判": (20, 300), "单一来源": (50, 1000),
-              "询价": (5, 50), "邀请招标": (80, 800)}
+    ranges = {
+        "公开招标": (100, 2000),
+        "竞争性磋商": (50, 500),
+        "竞争性谈判": (20, 300),
+        "单一来源": (50, 1000),
+        "询价": (5, 50),
+        "邀请招标": (80, 800),
+    }
     low, high = ranges.get(method, (10, 200))
     return round(random.uniform(low, high), 2)
 
@@ -362,24 +682,35 @@ def extract_amount_from_content(content_html, ann_type):
         return None
 
     # 1) 去掉 <style>...</style>
-    text = re.sub(r'<style[^>]*>.*?</style>', ' ', content_html, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(
+        r"<style[^>]*>.*?</style>", " ", content_html, flags=re.DOTALL | re.IGNORECASE
+    )
     # 2) 去掉CSS规则块（selector { ... }）—— 匹配 xxx{...} 或 xxx : xxx ;
-    text = re.sub(r'[^{}<]*\{[^}]*\}', ' ', text)
+    text = re.sub(r"[^{}<]*\{[^}]*\}", " ", text)
     # 3) 去掉HTML标签
-    text = re.sub(r'<[^>]+>', ' ', text)
-    text = re.sub(r'&nbsp;', ' ', text)
-    text = re.sub(r'&[a-zA-Z]+;', '', text)
-    text = re.sub(r'\s+', ' ', text).strip()
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"&nbsp;", " ", text)
+    text = re.sub(r"&[a-zA-Z]+;", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
 
     # 需要排除的"假金额"上下文（代理费、工本费等）
     # 注意："收费"不单独使用 — 会误杀"收费标准"上下文中提到的"预算金额"
-    FALSE_AMOUNT_KW = ['代理服务', '代理费', '招标代理',
-                       '售价', '工本费', '标书', '保证金',
-                       '评审费', '公证费', '印花税']
+    FALSE_AMOUNT_KW = [
+        "代理服务",
+        "代理费",
+        "招标代理",
+        "售价",
+        "工本费",
+        "标书",
+        "保证金",
+        "评审费",
+        "公证费",
+        "印花税",
+    ]
 
     def _is_false_amount(pos):
         """检查匹配位置前方文本是否表明这是假金额（非项目金额）"""
-        before = text[max(0, pos - 25):pos]
+        before = text[max(0, pos - 25) : pos]
         return any(kw in before for kw in FALSE_AMOUNT_KW)
 
     def try_patterns(patterns, is_yuan=True):
@@ -389,7 +720,7 @@ def extract_amount_from_content(content_html, ann_type):
         """
         for p in patterns:
             for m in re.finditer(p, text):
-                val = float(m.group(1).replace(',', ''))
+                val = float(m.group(1).replace(",", ""))
                 if val <= 0:
                     continue
                 if _is_false_amount(m.start()):
@@ -400,24 +731,24 @@ def extract_amount_from_content(content_html, ann_type):
     # ── 优先级 1：精确金额关键词（元）— 中标结果/中标公示 ──
     patterns_p1 = [
         # "总价：544500（元）"、"最终报价：4396637.00（元）"
-        r'(?:总价|最终报价|中标报价|成交报价)[：:]\s*(\d[\d,]*\.?\d*)\s*[（(]元[)）]',
-        r'(?:总价|最终报价|中标报价|成交报价)[：:]\s*(\d[\d,]*\.?\d*)',
+        r"(?:总价|最终报价|中标报价|成交报价)[：:]\s*(\d[\d,]*\.?\d*)\s*[（(]元[)）]",
+        r"(?:总价|最终报价|中标报价|成交报价)[：:]\s*(\d[\d,]*\.?\d*)",
         # "中标价：279000"、"中标价：279000元"
-        r'中标价[：:]\s*(\d[\d,]*\.?\d*)',
-        r'中标价\s*[：:]?\s*(\d[\d,]*\.?\d*)\s*元',
+        r"中标价[：:]\s*(\d[\d,]*\.?\d*)",
+        r"中标价\s*[：:]?\s*(\d[\d,]*\.?\d*)\s*元",
         # "中标（成交）金额(元)：XXX"、"中标金额(元)：XXX"
-        r'中标[（(]成交[)）]金额[（(]元[)）]?[：:\s]*(\d[\d,]*\.?\d*)',
-        r'中标金额[（(]元[)）]?[：:\s]*(\d[\d,]*\.?\d*)',
-        r'成交金额[（(]元[)）]?[：:\s]*(\d[\d,]*\.?\d*)',
-        r'中标金额[：:\s]*(\d[\d,]*\.?\d*)',
-        r'成交金额[：:\s]*(\d[\d,]*\.?\d*)',
-        r'合同金额[（(]元[)）]?[：:\s]*(\d[\d,]*\.?\d*)',
-        r'合同金额[：:\s]*(\d[\d,]*\.?\d*)',
+        r"中标[（(]成交[)）]金额[（(]元[)）]?[：:\s]*(\d[\d,]*\.?\d*)",
+        r"中标金额[（(]元[)）]?[：:\s]*(\d[\d,]*\.?\d*)",
+        r"成交金额[（(]元[)）]?[：:\s]*(\d[\d,]*\.?\d*)",
+        r"中标金额[：:\s]*(\d[\d,]*\.?\d*)",
+        r"成交金额[：:\s]*(\d[\d,]*\.?\d*)",
+        r"合同金额[（(]元[)）]?[：:\s]*(\d[\d,]*\.?\d*)",
+        r"合同金额[：:\s]*(\d[\d,]*\.?\d*)",
         # "合计（元）：7869984" — 中标结果表格中的总金额
-        r'合计[（(]?\s*元\s*[)）]?[：:]\s*(\d[\d,]*\.?\d*)',
-        r'合计\s*[：:]\s*(\d[\d,]*\.?\d*)\s*[（(]?元[)）]?',
-        r'总报价[：:]\s*(\d[\d,]*\.?\d*)',
-        r'报价为?\s*(\d[\d,]*\.?\d*)\s*元',
+        r"合计[（(]?\s*元\s*[)）]?[：:]\s*(\d[\d,]*\.?\d*)",
+        r"合计\s*[：:]\s*(\d[\d,]*\.?\d*)\s*[（(]?元[)）]?",
+        r"总报价[：:]\s*(\d[\d,]*\.?\d*)",
+        r"报价为?\s*(\d[\d,]*\.?\d*)\s*元",
     ]
     found = try_patterns(patterns_p1, is_yuan=True)
     if found is not None:
@@ -425,20 +756,20 @@ def extract_amount_from_content(content_html, ann_type):
 
     # ── 优先级 1.5：不带关键词的 "XXXXXX元" / "XXXXXX（元）" — 数额直接跟"元" ──
     # 需 ≥1万元且排除 万元/售价/工本费/代理费 等假金额
-    for m in re.finditer(r'(?<!万)(\d{5,}(?:\.\d+)?)\s*[（(]?\s*元', text):
+    for m in re.finditer(r"(?<!万)(\d{5,}(?:\.\d+)?)\s*[（(]?\s*元", text):
         if _is_false_amount(m.start()):
             continue
-        val = float(m.group(1).replace(',', ''))
+        val = float(m.group(1).replace(",", ""))
         if val >= 10000:
             return round(val / 10000, 2)
 
     # ── 优先级 2a：金额关键词 + 元（值在元，需÷10000）— 招标公告 ──
     patterns_p2_yuan = [
-        r'预算金额[（(]元[)）][：:\s]*(\d[\d,]*\.?\d*)',
-        r'预算(?:金额|总价)?[（(]元[)）][：:\s]*(\d[\d,]*\.?\d*)',
-        r'最高(?:投标)?限价[（(]元[)）][：:\s]*(\d[\d,]*\.?\d*)',
-        r'控制价[（(]元[)）][：:\s]*(\d[\d,]*\.?\d*)',
-        r'预算金额[（(]元[)）]\s*[：:]*\s*(\d[\d,]*\.?\d*)',
+        r"预算金额[（(]元[)）][：:\s]*(\d[\d,]*\.?\d*)",
+        r"预算(?:金额|总价)?[（(]元[)）][：:\s]*(\d[\d,]*\.?\d*)",
+        r"最高(?:投标)?限价[（(]元[)）][：:\s]*(\d[\d,]*\.?\d*)",
+        r"控制价[（(]元[)）][：:\s]*(\d[\d,]*\.?\d*)",
+        r"预算金额[（(]元[)）]\s*[：:]*\s*(\d[\d,]*\.?\d*)",
     ]
     found = try_patterns(patterns_p2_yuan, is_yuan=True)
     if found is not None:
@@ -446,13 +777,13 @@ def extract_amount_from_content(content_html, ann_type):
 
     # ── 优先级 2b：金额关键词 + 万元/万（值已为万元）— 招标公告 ──
     patterns_p2_wan = [
-        r'采购预算价为?\s*(\d[\d,]*\.?\d*)\s*万元?',
-        r'采购预算\s*(\d[\d,]*\.?\d*)\s*万元?',
-        r'预算(?:金额|总价)?[：:\s]*(\d[\d,]*\.?\d*)\s*万元?',
-        r'最高(?:投标)?限价.{0,50}?(\d[\d,]*\.?\d*)\s*万元?',
-        r'控制价.{0,50}?(\d[\d,]*\.?\d*)\s*万元?',
-        r'采购预算\s*(\d[\d,]*\.?\d*)\s*万\b',
-        r'\b预算\s*(\d{1,6}(?:\.\d+)?)\s*万\b',
+        r"采购预算价为?\s*(\d[\d,]*\.?\d*)\s*万元?",
+        r"采购预算\s*(\d[\d,]*\.?\d*)\s*万元?",
+        r"预算(?:金额|总价)?[：:\s]*(\d[\d,]*\.?\d*)\s*万元?",
+        r"最高(?:投标)?限价.{0,50}?(\d[\d,]*\.?\d*)\s*万元?",
+        r"控制价.{0,50}?(\d[\d,]*\.?\d*)\s*万元?",
+        r"采购预算\s*(\d[\d,]*\.?\d*)\s*万\b",
+        r"\b预算\s*(\d{1,6}(?:\.\d+)?)\s*万\b",
     ]
     found = try_patterns(patterns_p2_wan, is_yuan=False)
     if found is not None:
@@ -460,20 +791,24 @@ def extract_amount_from_content(content_html, ann_type):
 
     # ── 优先级 2.5：表格型 — 表头含关键词 + (元)/(万元)，值与表头分离 ──
     # 2.5a: 万元 列
-    for kw in ['预算金额', '预算价', '最高限价', '最高投标限价', '控制价']:
+    for kw in ["预算金额", "预算价", "最高限价", "最高投标限价", "控制价"]:
         idx = text.find(kw)
         if idx == -1:
             continue
-        ctx = text[idx:idx+280]
-        if re.search(r'[（(]\s*万元?\s*[)）]', ctx):
-            after = text[idx+len(kw):idx+300]
-            for m in re.finditer(r'[\s年月日号项套批次个台][:：.、 ]+(\d{1,8}(?:\.\d+)?)', after):
+        ctx = text[idx : idx + 280]
+        if re.search(r"[（(]\s*万元?\s*[)）]", ctx):
+            after = text[idx + len(kw) : idx + 300]
+            for m in re.finditer(
+                r"[\s年月日号项套批次个台][:：.、 ]+(\d{1,8}(?:\.\d+)?)", after
+            ):
                 val = float(m.group(1))
                 if 2017 <= val <= 2026 or val == 0:
                     continue
                 if val >= 0.1:
                     return round(val, 2)
-            for m in re.finditer(r'(?<!\d)(\d{1,6}(?:\.\d+)?)\s+(?=套|项|批|个|台|次|月|年)', after):
+            for m in re.finditer(
+                r"(?<!\d)(\d{1,6}(?:\.\d+)?)\s+(?=套|项|批|个|台|次|月|年)", after
+            ):
                 val = float(m.group(1))
                 if 2017 <= val <= 2026:
                     continue
@@ -481,34 +816,34 @@ def extract_amount_from_content(content_html, ann_type):
                     return round(val, 2)
 
     # 2.5b: 元 列（值通常 5位以上数字）
-    for kw in ['预算金额', '预算价', '最高限价', '最高投标限价', '控制价']:
+    for kw in ["预算金额", "预算价", "最高限价", "最高投标限价", "控制价"]:
         idx = text.find(kw)
         if idx == -1:
             continue
-        ctx = text[idx:idx+280]
-        if re.search(r'[（(]\s*元\s*[)）](?!.*万元)', ctx):
-            after = text[idx+len(kw):idx+350]
-            for m in re.finditer(r'(?<!\d)(\d{5,})', after):
+        ctx = text[idx : idx + 280]
+        if re.search(r"[（(]\s*元\s*[)）](?!.*万元)", ctx):
+            after = text[idx + len(kw) : idx + 350]
+            for m in re.finditer(r"(?<!\d)(\d{5,})", after):
                 val = float(m.group(1))
                 if val >= 10000:
                     return round(val / 10000, 2)
 
     # ── 优先级 3：通用兜底（排除代理费等假金额） ──
     # 3a: "金额（元）：XXX" — 排除"代理服务收费金额"等
-    for m in re.finditer(r'金额[（(]元[)）][：:\s]*(\d[\d,]*\.?\d*)', text):
+    for m in re.finditer(r"金额[（(]元[)）][：:\s]*(\d[\d,]*\.?\d*)", text):
         if _is_false_amount(m.start()):
             continue
-        val = float(m.group(1).replace(',', ''))
+        val = float(m.group(1).replace(",", ""))
         if val > 0:
             return round(val / 10000, 2)
 
     # 3b: "XXX万元"
-    found = try_patterns([r'(\d[\d,]*\.?\d*)\s*万元'], is_yuan=False)
+    found = try_patterns([r"(\d[\d,]*\.?\d*)\s*万元"], is_yuan=False)
     if found is not None:
         return found
 
     # 3c: 通用兜底 "万" (不含元)
-    for m in re.finditer(r'(?<!\d)(\d{2,6}(?:\.\d+)?)\s*万\b(?!元)', text):
+    for m in re.finditer(r"(?<!\d)(\d{2,6}(?:\.\d+)?)\s*万\b(?!元)", text):
         val = float(m.group(1))
         if 2017 <= val <= 2026:
             continue
@@ -523,7 +858,8 @@ def extract_amount_from_content(content_html, ann_type):
 def fetch_detail_amount(article_id):
     """调用 /portal/detail API获取单条公告详情，提取真实金额（万元）"""
     resp = _request_with_retry(
-        "GET", DETAIL_API,
+        "GET",
+        DETAIL_API,
         headers=DETAIL_HEADERS,
         params={"articleId": article_id, "parentId": "600007"},
         timeout=20,
@@ -541,14 +877,21 @@ def fetch_detail_amount(article_id):
         if amount is None and content:
             debug_path = os.path.join(BASE_DIR, "logs", "amount_missed")
             os.makedirs(debug_path, exist_ok=True)
-            dtext = re.sub(r'<style[^>]*>.*?</style>', ' ', content, flags=re.DOTALL | re.IGNORECASE)
-            dtext = re.sub(r'[^{}<]*\{[^}]*\}', ' ', dtext)
-            dtext = re.sub(r'<[^>]+>', ' ', dtext)
-            dtext = re.sub(r'&nbsp;', ' ', dtext)
-            dtext = re.sub(r'&[a-zA-Z]+;', '', dtext)
-            dtext = re.sub(r'\s+', ' ', dtext).strip()
-            safe_name = article_id.replace('/', '_').replace('=', '_')
-            with open(os.path.join(debug_path, f"{safe_name}.txt"), "w", encoding="utf-8") as df:
+            dtext = re.sub(
+                r"<style[^>]*>.*?</style>",
+                " ",
+                content,
+                flags=re.DOTALL | re.IGNORECASE,
+            )
+            dtext = re.sub(r"[^{}<]*\{[^}]*\}", " ", dtext)
+            dtext = re.sub(r"<[^>]+>", " ", dtext)
+            dtext = re.sub(r"&nbsp;", " ", dtext)
+            dtext = re.sub(r"&[a-zA-Z]+;", "", dtext)
+            dtext = re.sub(r"\s+", " ", dtext).strip()
+            safe_name = article_id.replace("/", "_").replace("=", "_")
+            with open(
+                os.path.join(debug_path, f"{safe_name}.txt"), "w", encoding="utf-8"
+            ) as df:
                 df.write(f"articleId: {article_id}\n")
                 df.write(f"announcementType: {ann_type}\n")
                 df.write(f"projectName: {project_name}\n\n")
@@ -561,13 +904,22 @@ def fetch_detail_amount(article_id):
 
 
 def fetch_notices(sub_code, district_code):
-    payload = {"code": "110-606633", "subCodes": [sub_code],
-               "districtCode": district_code, "pageSize": 20, "isStick": True,
-               "needTotal": False, "needNewCnt": False, "needValidCount": False}
+    payload = {
+        "code": "110-606633",
+        "subCodes": [sub_code],
+        "districtCode": district_code,
+        "pageSize": 20,
+        "isStick": True,
+        "needTotal": False,
+        "needNewCnt": False,
+        "needValidCount": False,
+    }
     resp = _request_with_retry("POST", API_URL, json=payload, timeout=30)
     if resp is not None and resp.status_code == 200:
         try:
-            return resp.json().get("result", {}).get("data", {}).get("children", []) or []
+            return (
+                resp.json().get("result", {}).get("data", {}).get("children", []) or []
+            )
         except Exception as e:
             log(f"  [ERROR] parse notices: {e}")
     return []
@@ -615,8 +967,15 @@ def _ms_to_date(ms):
         return ""
 
 
-def fetch_category_page(category_code, page_no=1, page_size=50, keyword=None,
-                        date_begin=None, date_end=None, district_code=None):
+def fetch_category_page(
+    category_code,
+    page_no=1,
+    page_size=50,
+    keyword=None,
+    date_begin=None,
+    date_end=None,
+    district_code=None,
+):
     """分页拉取 /portal/category（支持 keyword / 日期区间）。"""
     payload = {
         "pageNo": int(page_no),
@@ -685,8 +1044,15 @@ def _notice_to_project(n, sub_type, skip_detail=False, dist_hint=""):
     }
 
 
-def fetch_all(max_districts=None, skip_detail=False, max_pages=None, page_size=None,
-              days_back=None, keywords=None, use_district_crawl=False):
+def fetch_all(
+    max_districts=None,
+    skip_detail=False,
+    max_pages=None,
+    page_size=None,
+    days_back=None,
+    keywords=None,
+    use_district_crawl=False,
+):
     """优先用 /portal/category 关键词分页抓取；可选补充区县 searchHome 首屏。
 
     max_districts: 兼容旧 quick 模式；>0 时强制走区县首屏且限制数量。
@@ -713,8 +1079,12 @@ def fetch_all(max_districts=None, skip_detail=False, max_pages=None, page_size=N
 
     if kw_list:
         write_status(
-            running=True, phase="category", message="关键词分页抓取浙江政采…",
-            progress=0, fetched=0, error=None,
+            running=True,
+            phase="category",
+            message="关键词分页抓取浙江政采…",
+            progress=0,
+            fetched=0,
+            error=None,
         )
         log(
             f"category 抓取: keywords={len(kw_list)}, max_pages={max_pages}, "
@@ -732,14 +1102,21 @@ def fetch_all(max_districts=None, skip_detail=False, max_pages=None, page_size=N
                 step += 1
                 pct = int(100 * step / total_steps * 0.85)
                 write_status(
-                    running=True, phase="category", progress=pct,
+                    running=True,
+                    phase="category",
+                    progress=pct,
                     message=f"关键词 [{kw}] {sub_type}",
-                    fetched=len(all_projects), keyword=kw,
+                    fetched=len(all_projects),
+                    keyword=kw,
                 )
                 for page in range(1, max_pages + 1):
                     notices, total = fetch_category_page(
-                        sub_code, page_no=page, page_size=page_size,
-                        keyword=kw, date_begin=date_begin, date_end=date_end,
+                        sub_code,
+                        page_no=page,
+                        page_size=page_size,
+                        keyword=kw,
+                        date_begin=date_begin,
+                        date_end=date_end,
                     )
                     if not notices:
                         break
@@ -768,8 +1145,12 @@ def fetch_all(max_districts=None, skip_detail=False, max_pages=None, page_size=N
 
     if use_district_crawl:
         write_status(
-            running=True, phase="districts", message="补充抓取区县首屏…",
-            progress=88, fetched=len(all_projects), error=None,
+            running=True,
+            phase="districts",
+            message="补充抓取区县首屏…",
+            progress=88,
+            fetched=len(all_projects),
+            error=None,
         )
         log("获取浙江省区县代码（补充）...")
         districts = get_all_districts()
@@ -783,9 +1164,12 @@ def fetch_all(max_districts=None, skip_detail=False, max_pages=None, page_size=N
                 if i % 10 == 0 or i == len(items) - 1:
                     log(f"进度: {i}/{len(items)} (已获取: {len(all_projects)}条)")
                     write_status(
-                        running=True, phase="crawl", progress=90,
+                        running=True,
+                        phase="crawl",
+                        progress=90,
                         message=f"抓取 {dist_name} ({i}/{len(items)})",
-                        fetched=len(all_projects), district=dist_name,
+                        fetched=len(all_projects),
+                        district=dist_name,
                     )
                 for sub_type, sub_code in SUBCODES.items():
                     notices = fetch_notices(sub_code, dist_code)
@@ -811,7 +1195,9 @@ def fetch_all(max_districts=None, skip_detail=False, max_pages=None, page_size=N
     log(f"抓取完成: 去重后 {len(seen_ids)} 条公告, 通信类 {len(all_projects)} 条")
     log(f"  真实金额: {real_cnt}条, 估算金额: {est_cnt}条")
     write_status(
-        running=True, phase="import", progress=95,
+        running=True,
+        phase="import",
+        progress=95,
         message=f"抓取完成 {len(all_projects)} 条，准备入库",
         fetched=len(all_projects),
     )
@@ -821,7 +1207,7 @@ def fetch_all(max_districts=None, skip_detail=False, max_pages=None, page_size=N
 def import_to_db(projects, full_rebuild=False):
     """增量导入数据库；全量重建会清空后再写入。"""
     ensure_schema()
-    conn = sqlite3.connect(DB_PATH)
+    conn = _db.get_conn()
     if full_rebuild:
         conn.execute("DELETE FROM bid_projects")
         log("全量重建: 已清空旧数据")
@@ -844,7 +1230,16 @@ def import_to_db(projects, full_rebuild=False):
             continue
         conn.execute(
             "INSERT INTO bid_projects (project_name, industry, region, bid_date, win_amount, status, owner_user_id) VALUES (?,?,?,?,?,?,?)",
-            (p["project_name"], p["industry"], p["region"], bid_date, amount, p["status"], "real"))
+            (
+                p["project_name"],
+                p["industry"],
+                p["region"],
+                bid_date,
+                amount,
+                p["status"],
+                "real",
+            ),
+        )
         inserted += 1
 
     conn.commit()
@@ -857,12 +1252,27 @@ def import_to_db(projects, full_rebuild=False):
     return {"inserted": inserted, "total": total, "real_count": real_n}
 
 
-def run_fetch(full_rebuild=False, fetch_only=False, max_districts=None, skip_detail=False, max_pages=None, page_size=None, days_back=None, keywords=None, use_district_crawl=False):
+def run_fetch(
+    full_rebuild=False,
+    fetch_only=False,
+    max_districts=None,
+    skip_detail=False,
+    max_pages=None,
+    page_size=None,
+    days_back=None,
+    keywords=None,
+    use_district_crawl=False,
+):
     """可编程入口：供 scripts/refresh_real_bids.py 与 Web API 调用。"""
     started = datetime.datetime.now().isoformat(timespec="seconds")
     write_status(
-        running=True, phase="start", ok=None, progress=0,
-        message="开始抓取浙江政采网…", started_at=started, error=None,
+        running=True,
+        phase="start",
+        ok=None,
+        progress=0,
+        message="开始抓取浙江政采网…",
+        started_at=started,
+        error=None,
     )
     write_meta(last_attempt=started)
     log("=" * 50)
@@ -875,9 +1285,13 @@ def run_fetch(full_rebuild=False, fetch_only=False, max_districts=None, skip_det
 
     try:
         projects = fetch_all(
-            max_districts=max_districts, skip_detail=skip_detail,
-            max_pages=max_pages, page_size=page_size, days_back=days_back,
-            keywords=keywords, use_district_crawl=use_district_crawl,
+            max_districts=max_districts,
+            skip_detail=skip_detail,
+            max_pages=max_pages,
+            page_size=page_size,
+            days_back=days_back,
+            keywords=keywords,
+            use_district_crawl=use_district_crawl,
         )
         os.makedirs(os.path.dirname(JSON_PATH), exist_ok=True)
         with open(JSON_PATH, "w", encoding="utf-8") as f:
@@ -898,12 +1312,20 @@ def run_fetch(full_rebuild=False, fetch_only=False, max_districts=None, skip_det
                     last_ok=False,
                     last_error="站点无数据或不可达",
                     last_fetched=0,
-                    **{k: stats.get(k) for k in ("row_count", "real_count", "demo_count")},
+                    **{
+                        k: stats.get(k)
+                        for k in ("row_count", "real_count", "demo_count")
+                    },
                 )
                 write_status(
-                    running=False, phase="done", ok=False, progress=100,
-                    message=msg, finished_at=datetime.datetime.now().isoformat(timespec="seconds"),
-                    row_count=stats.get("row_count"), real_count=stats.get("real_count"),
+                    running=False,
+                    phase="done",
+                    ok=False,
+                    progress=100,
+                    message=msg,
+                    finished_at=datetime.datetime.now().isoformat(timespec="seconds"),
+                    row_count=stats.get("row_count"),
+                    real_count=stats.get("real_count"),
                 )
                 return {
                     "ok": False,
@@ -926,7 +1348,10 @@ def run_fetch(full_rebuild=False, fetch_only=False, max_districts=None, skip_det
             demo_count=stats.get("demo_count"),
         )
         write_status(
-            running=False, phase="done", ok=True, progress=100,
+            running=False,
+            phase="done",
+            ok=True,
+            progress=100,
             message=f"完成：抓取 {len(projects)}，新增 {import_info.get('inserted', 0)}，库内 {stats.get('row_count')}",
             finished_at=finished,
             fetched=len(projects),
@@ -951,10 +1376,15 @@ def run_fetch(full_rebuild=False, fetch_only=False, max_districts=None, skip_det
             **{k: stats.get(k) for k in ("row_count", "real_count", "demo_count")},
         )
         write_status(
-            running=False, phase="failed", ok=False, progress=100,
-            message=str(ex), error=str(ex),
+            running=False,
+            phase="failed",
+            ok=False,
+            progress=100,
+            message=str(ex),
+            error=str(ex),
             finished_at=datetime.datetime.now().isoformat(timespec="seconds"),
-            row_count=stats.get("row_count"), real_count=stats.get("real_count"),
+            row_count=stats.get("row_count"),
+            real_count=stats.get("real_count"),
         )
         return {"ok": False, "error": str(ex), **stats}
 
@@ -962,14 +1392,34 @@ def run_fetch(full_rebuild=False, fetch_only=False, max_districts=None, skip_det
 def main(argv=None):
     parser = argparse.ArgumentParser(description="浙江政采网 · 通信/信息化标讯抓取")
     parser.add_argument("--full-rebuild", action="store_true", help="清空后全量重建")
-    parser.add_argument("--fetch-only", action="store_true", help="仅抓取写 JSON，不导入 DB")
-    parser.add_argument("--max-districts", type=int, default=0, help="限制区县数（冒烟/快速）")
-    parser.add_argument("--skip-detail", action="store_true", help="跳过详情金额 API，加快抓取")
-    parser.add_argument("--quick", action="store_true", help="快速：12 区县首屏 + skip-detail（不跑 category 大页）")
-    parser.add_argument("--max-pages", type=int, default=0, help="category 每关键词最大页数（默认 6）")
-    parser.add_argument("--page-size", type=int, default=0, help="category 每页条数（默认 50）")
-    parser.add_argument("--days-back", type=int, default=0, help="发布日起始回溯天数（默认 730）")
-    parser.add_argument("--with-districts", action="store_true", help="在关键词分页之外再补区县 searchHome 首屏")
+    parser.add_argument(
+        "--fetch-only", action="store_true", help="仅抓取写 JSON，不导入 DB"
+    )
+    parser.add_argument(
+        "--max-districts", type=int, default=0, help="限制区县数（冒烟/快速）"
+    )
+    parser.add_argument(
+        "--skip-detail", action="store_true", help="跳过详情金额 API，加快抓取"
+    )
+    parser.add_argument(
+        "--quick",
+        action="store_true",
+        help="快速：12 区县首屏 + skip-detail（不跑 category 大页）",
+    )
+    parser.add_argument(
+        "--max-pages", type=int, default=0, help="category 每关键词最大页数（默认 6）"
+    )
+    parser.add_argument(
+        "--page-size", type=int, default=0, help="category 每页条数（默认 50）"
+    )
+    parser.add_argument(
+        "--days-back", type=int, default=0, help="发布日起始回溯天数（默认 730）"
+    )
+    parser.add_argument(
+        "--with-districts",
+        action="store_true",
+        help="在关键词分页之外再补区县 searchHome 首屏",
+    )
     args = parser.parse_args(argv)
     max_d = args.max_districts or (12 if args.quick else None)
     skip = args.skip_detail or args.quick

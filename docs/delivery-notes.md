@@ -59,3 +59,11 @@ ffprobe -v error -show_entries format=duration,size -show_entries stream=codec_n
 ```
 
 期望：时长 ≤60s，1920×1080，h264+aac，文件 ≤100MB。
+
+## 全局可复用 Skill
+
+本次预赛交付流程已沉淀为 Cursor Agent Skill（本体不在本仓）：
+
+`~/.cursor/skills/xirang-opc-contest-deliver/`（Windows：`%USERPROFILE%\.cursor\skills\xirang-opc-contest-deliver\`）
+
+触发词示例：息壤杯、OPC、预赛提交、60秒视频、电影级、答辩PPT、图文并茂、Store上传、一人成军。

@@ -4,6 +4,7 @@
 保留原内容工厂接口，新增战役（Campaign）API
 含邮箱登录/注册、权限隔离、超级管理员用户洞察
 """
+
 import os
 import datetime
 from fastapi import FastAPI, Request, HTTPException, Depends
@@ -116,7 +117,9 @@ def login(req: LoginReq):
     token = f"tk_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}_{user['username']}"
     _sessions[token] = user
     op_logger.log("web_login", f"用户登录: {display}", user=user["username"])
-    user_analytics.log_event(user["username"], "login", {"via": req.u, "role": user.get("role")})
+    user_analytics.log_event(
+        user["username"], "login", {"via": req.u, "role": user.get("role")}
+    )
     return {
         "token": token,
         "user": user.get("username"),
@@ -133,8 +136,15 @@ def register(req: RegisterReq):
     except ValueError as ex:
         return {"error": str(ex)}
     user_analytics.log_event(user["username"], "register", {"email": user.get("email")})
-    op_logger.log("web_register", f"用户注册: {user.get('email')}", user=user["username"])
-    return {"ok": True, "user": user["username"], "email": user.get("email"), "role": user["role"]}
+    op_logger.log(
+        "web_register", f"用户注册: {user.get('email')}", user=user["username"]
+    )
+    return {
+        "ok": True,
+        "user": user["username"],
+        "email": user.get("email"),
+        "role": user["role"],
+    }
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -206,6 +216,7 @@ def health():
     mcp_pkg = _mcp_packaging_status()
     try:
         import wechat_publisher
+
         wechat_st = wechat_publisher.status_summary()
     except Exception as ex:
         wechat_st = {"configured": False, "hint": f"wechat 模块不可用: {ex}"}
@@ -222,7 +233,8 @@ def health():
         "demo_ready": demo_ready,
         "public_deploy": public,
         "password_hygiene": {
-            "recommend_change_defaults": bool(pwd_risk.get("recommend_change")) and public,
+            "recommend_change_defaults": bool(pwd_risk.get("recommend_change"))
+            and public,
             "demo_accounts_present": bool(pwd_risk.get("demo_accounts_enabled")),
             # 不返回口令；仅提示公网须改密
             "message": (
@@ -238,7 +250,8 @@ def health():
             "password_hashing": True,
             "roles": ["super_admin", "operator", "user", "guest"],
         },
-        "hint": llm.get("hint") or (
+        "hint": llm.get("hint")
+        or (
             "评委路径就绪：登录成军看板 → 发起成军 → 人审 → 导出周报"
             if demo_ready
             else "结构可浏览；配置 XIRANG_API_KEY 后可真实演示。见 docs/NEXT_SPRINT.md"
@@ -248,12 +261,21 @@ def health():
 
 def _is_public_deploy(cfg: Optional[dict] = None) -> bool:
     """公网/非本机部署探测：env CHENGJUNTAI_PUBLIC=1 或 config.public_deploy / 非 loopback host。"""
-    if (os.environ.get("CHENGJUNTAI_PUBLIC") or "").strip() in ("1", "true", "yes", "on"):
+    if (os.environ.get("CHENGJUNTAI_PUBLIC") or "").strip() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    ):
         return True
     cfg = cfg or load_config()
     if cfg.get("public_deploy") is True:
         return True
-    host = str(cfg.get("web_host") or os.environ.get("CHENGJUNTAI_HOST") or "127.0.0.1").strip().lower()
+    host = (
+        str(cfg.get("web_host") or os.environ.get("CHENGJUNTAI_HOST") or "127.0.0.1")
+        .strip()
+        .lower()
+    )
     if host in ("0.0.0.0", "::", "*"):
         # 绑定全网卡时仍可能是本地演示；仅 env/config 强制时才算公网
         return bool(cfg.get("public_deploy"))
@@ -299,11 +321,13 @@ def campaign_start(req: StartCampaignReq, user=Depends(_token_user)):
             template=req.template,
             created_by=user["username"],
             allow_mock=_allow_mock(),
-            auto_approve=req.auto_approve or bool(load_config().get("demo_mode", {}).get("auto_approve_gate")),
+            auto_approve=req.auto_approve
+            or bool(load_config().get("demo_mode", {}).get("auto_approve_gate")),
         )
         auth_users.bump_usage(user["username"], "campaigns_started", 1)
         user_analytics.log_event(
-            user["username"], "campaign_start",
+            user["username"],
+            "campaign_start",
             {"cid": camp.get("id"), "template": req.template},
         )
         return camp
@@ -341,7 +365,9 @@ def campaign_approve(cid: str, req: GateReq, user=Depends(_token_user)):
     try:
         result = camp_runner.approve_gate(cid, note=req.note)
         auth_users.bump_usage(user["username"], "tasks_done", 1)
-        user_analytics.log_event(user["username"], "approve", {"cid": cid, "note": req.note})
+        user_analytics.log_event(
+            user["username"], "approve", {"cid": cid, "note": req.note}
+        )
         return result
     except Exception as ex:
         raise HTTPException(500, str(ex))
@@ -386,8 +412,14 @@ def campaign_report(cid: str, user=Depends(_token_user)):
         camp = camp_store.get_campaign(cid)
         report = (camp or {}).get("report") or {}
         user_analytics.log_event(
-            user["username"], "report",
-            {"cid": cid, "path": path, "docx": report.get("docx"), "pdf": report.get("pdf")},
+            user["username"],
+            "report",
+            {
+                "cid": cid,
+                "path": path,
+                "docx": report.get("docx"),
+                "pdf": report.get("pdf"),
+            },
         )
         return {
             "ok": True,
@@ -412,8 +444,14 @@ def campaign_report_docx(cid: str, user=Depends(_token_user)):
     try:
         path = camp_runner.export_weekly_report_docx(cid)
         auth_users.bump_usage(user["username"], "reports_exported", 1)
-        user_analytics.log_event(user["username"], "report_docx", {"cid": cid, "path": path})
-        return {"ok": True, "docx": path, "download": f"/api/campaign/{cid}/report_docx/file"}
+        user_analytics.log_event(
+            user["username"], "report_docx", {"cid": cid, "path": path}
+        )
+        return {
+            "ok": True,
+            "docx": path,
+            "download": f"/api/campaign/{cid}/report_docx/file",
+        }
     except Exception as ex:
         raise HTTPException(500, str(ex))
 
@@ -498,10 +536,12 @@ def bid_projects(user=Depends(_token_user)):
 def bid_refresh_status(user=Depends(_token_user)):
     """轮询真实标讯抓取进度（logs/fetch_status.json）。"""
     import sys
+
     root = os.path.dirname(os.path.dirname(__file__))
     if root not in sys.path:
         sys.path.insert(0, root)
     from fetch_real_data import load_status, db_stats
+
     st = load_status()
     stats = db_stats()
     return {**st, "db_stats": stats}
@@ -525,6 +565,7 @@ def bid_refresh_real(req: dict = None, user=Depends(_token_user)):
     import sys
     import subprocess
     import threading
+
     root = os.path.dirname(os.path.dirname(__file__))
     if root not in sys.path:
         sys.path.insert(0, root)
@@ -558,7 +599,10 @@ def bid_refresh_real(req: dict = None, user=Depends(_token_user)):
     args.extend(["--timeout", str(int(body.get("timeout") or 600))])
 
     write_status(
-        running=True, phase="spawn", ok=None, progress=0,
+        running=True,
+        phase="spawn",
+        ok=None,
+        progress=0,
         message="已启动后台刷新…",
         started_by=user.get("username"),
         started_at=datetime.datetime.now().isoformat(timespec="seconds"),
@@ -578,19 +622,27 @@ def bid_refresh_real(req: dict = None, user=Depends(_token_user)):
             )
         except subprocess.TimeoutExpired:
             write_status(
-                running=False, phase="timeout", ok=False,
-                message="子进程超时", error="subprocess timeout",
+                running=False,
+                phase="timeout",
+                ok=False,
+                message="子进程超时",
+                error="subprocess timeout",
                 finished_at=datetime.datetime.now().isoformat(timespec="seconds"),
             )
         except Exception as ex:
             write_status(
-                running=False, phase="failed", ok=False,
-                message=str(ex), error=str(ex),
+                running=False,
+                phase="failed",
+                ok=False,
+                message=str(ex),
+                error=str(ex),
                 finished_at=datetime.datetime.now().isoformat(timespec="seconds"),
             )
 
     threading.Thread(target=_spawn, daemon=True).start()
-    op_logger.log("bid_refresh", f"用户 {user.get('username')} 触发真实标讯刷新 quick={quick}")
+    op_logger.log(
+        "bid_refresh", f"用户 {user.get('username')} 触发真实标讯刷新 quick={quick}"
+    )
     return {
         "ok": True,
         "started": True,
@@ -655,7 +707,11 @@ def bid_push_campaign(req: dict, user=Depends(_token_user)):
         title = meta.get("title") or aid
         tags = [meta.get("role") or "战役产物", "标书知识"]
         return bid_pipeline_link.push_campaign_text_to_knowledge(
-            cid, title, text, tags=tags, artifact_id=aid,
+            cid,
+            title,
+            text,
+            tags=tags,
+            artifact_id=aid,
         )
     # 无 artifact：汇总全部产物
     arts = c.get("artifacts") or []
@@ -664,11 +720,15 @@ def bid_push_campaign(req: dict, user=Depends(_token_user)):
         text = camp_store.read_artifact_content(cid, a.get("id") or "")
         if not text:
             continue
-        pushed.append(bid_pipeline_link.push_campaign_text_to_knowledge(
-            cid, a.get("title") or a.get("id"), text,
-            tags=[a.get("role") or "战役产物", "标书知识"],
-            artifact_id=a.get("id") or "",
-        ))
+        pushed.append(
+            bid_pipeline_link.push_campaign_text_to_knowledge(
+                cid,
+                a.get("title") or a.get("id"),
+                text,
+                tags=[a.get("role") or "战役产物", "标书知识"],
+                artifact_id=a.get("id") or "",
+            )
+        )
     if not pushed:
         raise HTTPException(400, "该战役暂无产物可推送")
     return {"ok": True, "pushed_count": len(pushed), "items": pushed}
@@ -711,7 +771,9 @@ def bid_workspace_parse(req: dict, user=Depends(_token_user)):
     project_id = (req or {}).get("project_id") or ""
     use_llm = (req or {}).get("use_llm", True)
     try:
-        return bid_workspace.parse_tender_requirements(text, project_id=project_id, use_llm=use_llm)
+        return bid_workspace.parse_tender_requirements(
+            text, project_id=project_id, use_llm=use_llm
+        )
     except Exception as ex:
         raise HTTPException(400, str(ex))
 
@@ -779,7 +841,11 @@ def campaign_artifact_docx(cid: str, aid: str, user=Depends(_token_user)):
     try:
         out = os.path.join(docx_exporter.EXPORT_DOCX_DIR, f"{cid}_{aid}.docx")
         path = docx_exporter.md_to_docx(text, out, title=meta.get("title") or aid)
-        return {"ok": True, "docx": path, "download": f"/api/download_docx?path={os.path.basename(path)}"}
+        return {
+            "ok": True,
+            "docx": path,
+            "download": f"/api/download_docx?path={os.path.basename(path)}",
+        }
     except Exception as ex:
         raise HTTPException(500, str(ex))
 
@@ -789,7 +855,9 @@ def artifacts_center(user=Depends(_token_user)):
     arts = camp_store.list_all_artifacts(80)
     # 权限过滤
     if not auth_users.can_view_all_campaigns(user):
-        allowed = {c["id"] for c in _filter_campaigns(user, camp_store.list_campaigns(50))}
+        allowed = {
+            c["id"] for c in _filter_campaigns(user, camp_store.list_campaigns(50))
+        }
         arts = [a for a in arts if a.get("campaign_id") in allowed]
     articles = agents.list_articles()
     return {"campaign_artifacts": arts, "articles": articles}
@@ -819,6 +887,7 @@ def metrics(user=Depends(_token_user)):
 @app.get("/api/templates")
 def templates(user=Depends(_token_user)):
     from commander import TEMPLATES
+
     return TEMPLATES
 
 
@@ -832,6 +901,7 @@ def articles(user=Depends(_token_user)):
 def wechat_status(user=Depends(_token_user)):
     """公众号草稿通道状态（不返回完整密钥）。"""
     import wechat_publisher
+
     return wechat_publisher.status_summary()
 
 
@@ -843,6 +913,7 @@ def wechat_publish_draft(req: dict, user=Depends(_token_user)):
     if not aid:
         raise HTTPException(400, "需要 article_id")
     import wechat_publisher
+
     result = wechat_publisher.publish_article_to_draft(aid)
     # 未配置：200 + skipped（前端大声提示）；业务失败也返回 JSON，由前端渲染 error
     return result
@@ -851,6 +922,7 @@ def wechat_publish_draft(req: dict, user=Depends(_token_user)):
 @app.get("/api/article/preview")
 def preview(file: str, user=Depends(_token_user)):
     from config_loader import ARTICLES_DIR
+
     safe = os.path.basename(file or "").strip()
     if not safe:
         raise HTTPException(400, "缺少文件名")
@@ -923,7 +995,8 @@ def run(req: RunReq, user=Depends(_token_user)):
         )
         auth_users.bump_usage(user["username"], "articles_generated", 1)
         user_analytics.log_event(
-            user["username"], "generate_article",
+            user["username"],
+            "generate_article",
             {"article_id": result.get("id") if isinstance(result, dict) else None},
         )
         return result
@@ -931,10 +1004,14 @@ def run(req: RunReq, user=Depends(_token_user)):
         return quality_gate.run_quality_check(article_id=req.params.get("article_id"))
     if req.action == "publish_wechat_draft":
         import wechat_publisher
-        return wechat_publisher.publish_article_to_draft(req.params.get("article_id") or "")
+
+        return wechat_publisher.publish_article_to_draft(
+            req.params.get("article_id") or ""
+        )
     if req.action == "full_pipeline":
         # 选题→生成→质检→向量（generate_article 已入库向量）
         from main import run_full_pipeline
+
         topic = req.params.get("topic") or None
         result = run_full_pipeline(
             topic=topic,
@@ -957,7 +1034,11 @@ def run(req: RunReq, user=Depends(_token_user)):
         return {"file": pdf_exporter.export_article_by_id(req.params.get("article_id"))}
     if req.action == "export_article_docx":
         path = docx_exporter.export_article_by_id(req.params.get("article_id"))
-        return {"ok": True, "docx": path, "download": f"/api/article/{req.params.get('article_id')}/docx"}
+        return {
+            "ok": True,
+            "docx": path,
+            "download": f"/api/article/{req.params.get('article_id')}/docx",
+        }
     raise HTTPException(400, f"未知 action: {req.action}")
 
 
@@ -972,11 +1053,13 @@ def nl2sql_status(user=Depends(_token_user)):
     mcp_ok = agents_data.nl2sql_online()
     znws_ok = agents_data.znws_online()
     import sys
+
     root = os.path.dirname(os.path.dirname(__file__))
     if root not in sys.path:
         sys.path.insert(0, root)
     try:
         from fetch_real_data import db_stats, load_status
+
         stats = db_stats()
         fetch_st = load_status()
     except Exception:
@@ -993,9 +1076,17 @@ def nl2sql_status(user=Depends(_token_user)):
         db_path = stats["db_path"]
         if stats["db_exists"]:
             try:
-                import sqlite3
-                conn = sqlite3.connect(db_path)
-                stats["row_count"] = conn.execute("SELECT COUNT(*) FROM bid_projects").fetchone()[0]
+                import sys as _sys
+
+                _repo_root = os.path.dirname(os.path.dirname(__file__))
+                if _repo_root not in _sys.path:
+                    _sys.path.insert(0, _repo_root)
+                import db as _db
+
+                conn = _db.get_conn()
+                stats["row_count"] = conn.execute(
+                    "SELECT COUNT(*) FROM bid_projects"
+                ).fetchone()[0]
                 conn.close()
             except Exception:
                 pass
@@ -1023,7 +1114,9 @@ def nl2sql_status(user=Depends(_token_user)):
         "last_ok": stats.get("last_ok"),
         "fetch_running": bool(fetch_st.get("running")),
         "fetch_message": fetch_st.get("message"),
-        "data_mode": "real" if real_n else ("demo" if (stats.get("row_count") or 0) else "empty"),
+        "data_mode": "real"
+        if real_n
+        else ("demo" if (stats.get("row_count") or 0) else "empty"),
         "hint": hint,
     }
 
@@ -1032,10 +1125,17 @@ def nl2sql_status(user=Depends(_token_user)):
 def nl2sql_query(req: Nl2sqlReq, user=Depends(_token_user)):
     if not req.question.strip():
         raise HTTPException(400, "问题不能为空")
-    result = agents_data.query_nl2sql(req.question.strip(), req.dataset_name, req.chart_type)
+    result = agents_data.query_nl2sql(
+        req.question.strip(), req.dataset_name, req.chart_type
+    )
     user_analytics.log_event(
-        user["username"], "nl2sql_query",
-        {"ok": result.get("ok"), "offline": result.get("offline"), "q": req.question[:80]},
+        user["username"],
+        "nl2sql_query",
+        {
+            "ok": result.get("ok"),
+            "offline": result.get("offline"),
+            "q": req.question[:80],
+        },
     )
     return result
 
@@ -1045,10 +1145,12 @@ def nl2sql_seed(user=Depends(_token_user)):
     """写入最小演示库（不启动进程；进程请用 bat）。"""
     _perm(user, "run_task")
     import sys
+
     root = os.path.dirname(os.path.dirname(__file__))
     if root not in sys.path:
         sys.path.insert(0, root)
     from seed_demo_db import ensure_demo_db
+
     info = ensure_demo_db(force=False)
     return {"ok": True, **info, "start_script": "scripts/start_nl2sql_demo.bat"}
 
@@ -1168,7 +1270,8 @@ def admin_user_enable(req: UserEnableReq, user=Depends(_token_user)):
     if not auth_users.set_user_enabled(req.identity, req.enabled):
         raise HTTPException(404, "用户不存在")
     user_analytics.log_event(
-        user["username"], "admin_enable",
+        user["username"],
+        "admin_enable",
         {"target": req.identity, "enabled": req.enabled},
     )
     return {"ok": True}
@@ -1180,7 +1283,8 @@ def admin_user_role(req: UserRoleReq, user=Depends(_token_user)):
     if not auth_users.set_user_role(req.identity, req.role):
         raise HTTPException(400, "角色无效或用户不存在")
     user_analytics.log_event(
-        user["username"], "admin_role",
+        user["username"],
+        "admin_role",
         {"target": req.identity, "role": req.role},
     )
     return {"ok": True}
@@ -1190,7 +1294,10 @@ def admin_user_role(req: UserRoleReq, user=Depends(_token_user)):
 def admin_user_profile(req: ProfileReq, user=Depends(_token_user)):
     _require_super_admin(user)
     updated = auth_users.update_profile(
-        req.identity, notes=req.notes, tags=req.tags, segment=req.segment,
+        req.identity,
+        notes=req.notes,
+        tags=req.tags,
+        segment=req.segment,
     )
     if not updated:
         raise HTTPException(404, "用户不存在")

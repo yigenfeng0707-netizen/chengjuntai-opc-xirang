@@ -125,3 +125,18 @@ wechat:
   timeout: 20
 
 reserved_ports: [8082, 8765]
+
+# —— 数据库（PostgreSQL 用于公网部署；SQLite 为本地 fallback）——
+# 公网部署时设 database.engine=postgresql，或直接设环境变量 DATABASE_URL
+#   例：DATABASE_URL=postgresql://chengjuntai:PASSWORD@127.0.0.1:5432/chengjuntai
+# 本地开发可不配，默认使用 bid_telecom.db（SQLite）
+database:
+  engine: "sqlite"          # "postgresql" 或 "sqlite"
+  # PostgreSQL 连接参数（engine=postgresql 时生效；DATABASE_URL 优先级最高）
+  pg_host: "127.0.0.1"
+  pg_port: 5432
+  pg_db: "chengjuntai"
+  pg_user: "chengjuntai"
+  pg_password: "CHANGE_ME_TO_STRONG_PASSWORD"
+  # SQLite 路径（engine=sqlite 时生效）
+  sqlite_path: "bid_telecom.db"

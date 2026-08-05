@@ -12,3 +12,4 @@ flask>=3.0
 werkzeug>=3.0
 aiohttp>=3.9
 cachetools>=5.3
+psycopg2-binary>=2.9
