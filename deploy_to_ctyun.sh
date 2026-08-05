@@ -589,11 +589,11 @@ PUBLIC_IP=$(curl -s --connect-timeout 5 http://ifconfig.me 2>/dev/null || \
 
 cat > /etc/nginx/sites-available/teleagent.conf << 'NGINXEOF'
 server {
-    listen 80;
+    listen 8088;
     server_name _;
     client_max_body_size 50M;
 
-    # Web 面板 (FastAPI, 8090)
+    # Web 面板 (FastAPI, 8090) — 包含所有 /api/ 路由
     location / {
         proxy_pass http://127.0.0.1:8090;
         proxy_set_header Host $host;
@@ -602,9 +602,9 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # NL2SQL API (Flask, 8082)
-    location /api/ {
-        proxy_pass http://127.0.0.1:8082/api/;
+    # NL2SQL Flask 后端 (8082) — 只匹配 /api/v1/（避免与 FastAPI /api/ 冲突）
+    location /api/v1/ {
+        proxy_pass http://127.0.0.1:8082/api/v1/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header Authorization $http_authorization;
@@ -620,7 +620,7 @@ server {
         proxy_set_header Connection "";
     }
 
-    # 健康检查
+    # 健康检查 (Flask, 8082)
     location /health {
         proxy_pass http://127.0.0.1:8082/health;
         access_log off;
