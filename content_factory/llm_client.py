@@ -9,10 +9,11 @@ LLM 统一客户端 —— OpenAI 兼容多 provider 级联 fallback
   · 旧格式：llm.api_base / api_key / model 扁平字段（向后兼容）
 
 成军台增强：
-  · 支持环境变量覆盖 api_key（XIRANG / TOKENHUB / TOKEN_PLAN / SENSENOVA / DASHSCOPE）
+  · 支持环境变量覆盖 api_key（XIRANG / TOKENHUB / TOKEN_PLAN / SENSENOVA / DASHSCOPE / BIREN）
   · provider_status() 供 UI 展示模型徽章
   · 占位 Key（YOUR_ / CHANGE_ / 空）视为未配置，避免静默假成功
 """
+
 import os
 import requests
 import op_logger
@@ -26,7 +27,13 @@ _TOKEN_USAGE = {
     "completion_tokens": 0,
     "total_tokens": 0,
     "calls_with_usage": 0,
-    "last": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "model": None, "name": None},
+    "last": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "model": None,
+        "name": None,
+    },
 }
 
 _ENV_KEY_MAP = {
@@ -40,6 +47,8 @@ _ENV_KEY_MAP = {
     "tokenplan": "TOKEN_PLAN_API_KEY",
     "百炼": "DASHSCOPE_API_KEY",
     "DashScope": "DASHSCOPE_API_KEY",
+    "壁韧": "BIREN_API_KEY",
+    "biren": "BIREN_API_KEY",
 }
 
 
@@ -68,7 +77,12 @@ def _resolve_api_key(provider: dict) -> str:
             return os.environ[env].strip()
     # 通用环境变量
     for env in ("XIRANG_API_KEY", "TOKENHUB_API_KEY", "TELEAI_API_KEY"):
-        if "息壤" in name or "星辰" in name or "TokenHub" in name or "xirang" in name.lower():
+        if (
+            "息壤" in name
+            or "星辰" in name
+            or "TokenHub" in name
+            or "xirang" in name.lower()
+        ):
             if os.environ.get(env):
                 return os.environ[env].strip()
     if _is_placeholder_key(key):
@@ -126,14 +140,20 @@ def _get_providers() -> list:
         return out
 
     # 旧格式：扁平单 provider
-    if cfg.get("api_base") and cfg.get("api_key") and not _is_placeholder_key(cfg.get("api_key")):
-        return [{
-            "name": "default",
-            "api_base": cfg["api_base"],
-            "api_key": cfg["api_key"],
-            "model": cfg.get("model", "gpt-4o-mini"),
-            "timeout": cfg.get("timeout", 60),
-        }]
+    if (
+        cfg.get("api_base")
+        and cfg.get("api_key")
+        and not _is_placeholder_key(cfg.get("api_key"))
+    ):
+        return [
+            {
+                "name": "default",
+                "api_base": cfg["api_base"],
+                "api_key": cfg["api_key"],
+                "model": cfg.get("model", "gpt-4o-mini"),
+                "timeout": cfg.get("timeout", 60),
+            }
+        ]
     return []
 
 
@@ -159,15 +179,23 @@ def provider_status() -> dict:
     return {
         "enabled": enabled,
         "providers": [
-            {"name": p.get("name"), "model": p.get("model"), "api_base": p.get("api_base")}
+            {
+                "name": p.get("name"),
+                "model": p.get("model"),
+                "api_base": p.get("api_base"),
+            }
             for p in providers
         ],
-        "active_name": _LAST_SUCCESS.get("name") or (providers[0]["name"] if providers else None),
-        "active_model": _LAST_SUCCESS.get("model") or (providers[0]["model"] if providers else None),
+        "active_name": _LAST_SUCCESS.get("name")
+        or (providers[0]["name"] if providers else None),
+        "active_model": _LAST_SUCCESS.get("model")
+        or (providers[0]["model"] if providers else None),
         "ok": _COUNTERS["ok"],
         "fail": _COUNTERS["fail"],
         "token_usage": usage,
-        "require_real_llm": bool(load_config().get("llm", {}).get("require_real_llm", True)),
+        "require_real_llm": bool(
+            load_config().get("llm", {}).get("require_real_llm", True)
+        ),
         "hint": hint,
     }
 
@@ -185,7 +213,13 @@ def _record_usage(payload: dict, name: str, model: str) -> dict:
     pt = int(u.get("prompt_tokens") or u.get("input_tokens") or 0)
     ct = int(u.get("completion_tokens") or u.get("output_tokens") or 0)
     tt = int(u.get("total_tokens") or (pt + ct) or 0)
-    last = {"prompt_tokens": pt, "completion_tokens": ct, "total_tokens": tt, "model": model, "name": name}
+    last = {
+        "prompt_tokens": pt,
+        "completion_tokens": ct,
+        "total_tokens": tt,
+        "model": model,
+        "name": name,
+    }
     _TOKEN_USAGE["last"] = last
     if tt or pt or ct:
         _TOKEN_USAGE["prompt_tokens"] += pt
@@ -207,10 +241,16 @@ def last_success() -> dict:
     return dict(_LAST_SUCCESS)
 
 
-def call_llm(prompt: str, fallback: str = "", max_tokens: int = None,
-             temperature: float = None, timeout: int = None,
-             reverse_order: bool = False, thinking: object = None,
-             system_prompt: str = None) -> str:
+def call_llm(
+    prompt: str,
+    fallback: str = "",
+    max_tokens: int = None,
+    temperature: float = None,
+    timeout: int = None,
+    reverse_order: bool = False,
+    thinking: object = None,
+    system_prompt: str = None,
+) -> str:
     """
     级联调用 LLM。
     - 逐个尝试 provider，HTTP 200 且 content 非空即返回（content 已 strip）。
@@ -241,8 +281,10 @@ def call_llm(prompt: str, fallback: str = "", max_tokens: int = None,
 
     # 构建消息列表：system_prompt 存在时用双消息，否则单 user 消息
     if system_prompt:
-        messages = [{"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt}]
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt},
+        ]
     else:
         messages = [{"role": "user", "content": prompt}]
 
@@ -251,45 +293,61 @@ def call_llm(prompt: str, fallback: str = "", max_tokens: int = None,
         model = p["model"]
         tmo = timeout if timeout is not None else p.get("timeout", 60)
         try:
-            req_body = {"model": model,
-                        "messages": messages,
-                        "temperature": temp,
-                        "max_tokens": mt}
+            req_body = {
+                "model": model,
+                "messages": messages,
+                "temperature": temp,
+                "max_tokens": mt,
+            }
             # 关闭推理模型思考过程（阿里云qwen3.7-max生效且提速近1倍；其它provider安全忽略）
             if think is not None:
                 req_body["enable_thinking"] = think
             r = requests.post(
                 f"{p['api_base']}/chat/completions",
-                headers={"Authorization": f"Bearer {p['api_key']}",
-                         "Content-Type": "application/json"},
+                headers={
+                    "Authorization": f"Bearer {p['api_key']}",
+                    "Content-Type": "application/json",
+                },
                 json=req_body,
                 timeout=tmo,
             )
             if r.status_code == 200:
                 payload = r.json() if r.content else {}
-                content = ((payload.get("choices") or [{}])[0]
-                           .get("message", {})
-                           .get("content", ""))
-                usage_last = _record_usage(payload if isinstance(payload, dict) else {}, name, model)
+                content = (
+                    (payload.get("choices") or [{}])[0]
+                    .get("message", {})
+                    .get("content", "")
+                )
+                usage_last = _record_usage(
+                    payload if isinstance(payload, dict) else {}, name, model
+                )
                 if content and content.strip():
-                    _LAST_SUCCESS.update({"name": name, "model": model, "api_base": p["api_base"]})
+                    _LAST_SUCCESS.update(
+                        {"name": name, "model": model, "api_base": p["api_base"]}
+                    )
                     _COUNTERS["ok"] += 1
                     tok = usage_last.get("total_tokens") or 0
-                    op_logger.log("llm_client",
-                                  f"LLM调用成功[{name}/{model}] tokens={tok}",
-                                  level="INFO")
+                    op_logger.log(
+                        "llm_client",
+                        f"LLM调用成功[{name}/{model}] tokens={tok}",
+                        level="INFO",
+                    )
                     return content.strip()
-                op_logger.log("llm_client",
-                              f"LLM返回空content[{name}/{model}] http={r.status_code}",
-                              level="WARN")
+                op_logger.log(
+                    "llm_client",
+                    f"LLM返回空content[{name}/{model}] http={r.status_code}",
+                    level="WARN",
+                )
             else:
-                op_logger.log("llm_client",
-                              f"LLM HTTP{r.status_code}[{name}/{model}]: {r.text[:200]}",
-                              level="WARN")
+                op_logger.log(
+                    "llm_client",
+                    f"LLM HTTP{r.status_code}[{name}/{model}]: {r.text[:200]}",
+                    level="WARN",
+                )
         except Exception as ex:
-            op_logger.log("llm_client",
-                          f"LLM调用异常[{name}/{model}]: {ex}",
-                          level="WARN")
+            op_logger.log(
+                "llm_client", f"LLM调用异常[{name}/{model}]: {ex}", level="WARN"
+            )
 
     _COUNTERS["fail"] += 1
     op_logger.log("llm_client", "所有 provider 均失败，降级 fallback", level="WARN")

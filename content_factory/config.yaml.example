@@ -77,6 +77,14 @@ llm:
       model: "sensenova-6.7-flash-lite"
       enabled: true
       timeout: 60
+    # —— Interim fallback 2：壁韧算力（OpenAI 兼容，deepseek-v4-flash / minimax-2.7）——
+    - name: "interim-壁韧算力"
+      api_base: "https://fxb.supa.net.cn:6443/v1"
+      api_key: "YOUR_BIREN_API_KEY"
+      api_key_env: "BIREN_API_KEY"
+      model: "deepseek-v4-flash"
+      enabled: true
+      timeout: 60
     # —— Path B：参赛正式 primary（主办方发放后注入；endpoint/model 以控制台为准）——
     # 正式演示前：设 XIRANG_API_KEY（可选 XIRANG_BASE_URL / XIRANG_MODEL），enabled:true
     # 常见网关：wishub-x1 / wishub-x6（以发放的 BaseURL 为准）；model 可能是名称或 modelId
