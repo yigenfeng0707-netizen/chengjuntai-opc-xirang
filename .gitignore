@@ -34,7 +34,15 @@ env/
 
 # ========== 演示视频产物（本地成片，勿提交大文件）==========
 demo-output/
+demo-video/out/preview_*/
+demo-video/out/*.mp4
+demo-video/query-*/
+demo-video/public/audio/
 tools/demo-video/node_modules/
+
+# ========== 根级 Node（临时安装 remotion 依赖）==========
+/node_modules/
+/package-lock.json
 
 # ========== 临时文件 ==========
 .temp/
@@ -46,6 +54,9 @@ tools/demo-video/node_modules/
 # ========== 归档 ==========
 archive/
 backups/
+
+# ========== 归档/清理 ==========
+archive/
 
 # ========== IDE ==========
 .vscode/

@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@remotion/bundler": "^4.0.506",
+    "@remotion/cli": "^4.0.506",
+    "@remotion/fonts": "^4.0.506",
+    "@remotion/media": "^4.0.506",
+    "@remotion/renderer": "^4.0.506",
+    "remotion": "^4.0.506"
+  }
+}
