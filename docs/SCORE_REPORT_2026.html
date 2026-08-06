@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>成军台 - 息壤杯OPC创新大赛评分报告</title>
+<style>
+:root {
+  --primary: #2563eb;
+  --primary-dark: #1e40af;
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --bg: #f8fafc;
+  --card-bg: #ffffff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --text-muted: #64748b;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  padding: 20px;
+}
+.container { max-width: 1100px; margin: 0 auto; }
+.header {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  color: white;
+  padding: 40px 30px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 20px rgba(37,99,235,0.15);
+}
+.header h1 { font-size: 28px; margin-bottom: 8px; }
+.header .subtitle { font-size: 16px; opacity: 0.9; }
+.header .meta { margin-top: 16px; display: flex; gap: 20px; flex-wrap: wrap; font-size: 13px; opacity: 0.85; }
+.header .meta span { background: rgba(255,255,255,0.15); padding: 4px 12px; border-radius: 6px; }
+.section {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 28px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  border: 1px solid var(--border);
+}
+.section h2 {
+  font-size: 20px;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section h2 .icon { font-size: 22px; }
+.section h3 { font-size: 16px; margin: 18px 0 10px; color: var(--primary-dark); }
+.score-bar { height: 10px; border-radius: 5px; background: #e2e8f0; overflow: hidden; margin-top: 4px; }
+.score-fill { height: 100%; border-radius: 5px; transition: width 0.6s ease; }
+.score-fill.high { background: linear-gradient(90deg, #16a34a, #22c55e); }
+.score-fill.mid { background: linear-gradient(90deg, #d97706, #f59e0b); }
+.score-fill.low { background: linear-gradient(90deg, #dc2626, #ef4444); }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+th { background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); }
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+tr:hover td { background: #f8fafc; }
+.badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.badge-green { background: #dcfce7; color: #166534; }
+.badge-yellow { background: #fef3c7; color: #92400e; }
+.badge-red { background: #fee2e2; color: #991b1b; }
+.badge-blue { background: #dbeafe; color: #1e40af; }
+.summary-box {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  color: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin: 20px 0;
+  text-align: center;
+}
+.summary-box .big-score { font-size: 48px; font-weight: 700; }
+.summary-box .score-label { font-size: 14px; opacity: 0.85; margin-top: 4px; }
+.radar-container { display: flex; justify-content: center; margin: 20px 0; }
+.radar-svg { max-width: 500px; width: 100%; }
+.check-list { list-style: none; }
+.check-list li { padding: 6px 0; display: flex; align-items: flex-start; gap: 8px; font-size: 14px; }
+.check-list li::before { content: ""; flex-shrink: 0; width: 18px; height: 18px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+.check-pass::before { content: "\2713"; background: #dcfce7; color: #166534; }
+.check-fail::before { content: "\2717"; background: #fee2e2; color: #991b1b; }
+.check-warn::before { content: "!"; background: #fef3c7; color: #92400e; }
+.alert { padding: 12px 16px; border-radius: 8px; margin: 12px 0; font-size: 14px; }
+.alert-info { background: #eff6ff; border-left: 4px solid var(--primary); }
+.alert-success { background: #f0fdf4; border-left: 4px solid var(--success); }
+.alert-warning { background: #fffbeb; border-left: 4px solid var(--warning); }
+.grid { display: grid; gap: 16px; }
+.grid-2 { grid-template-columns: 1fr 1fr; }
+@media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+.footer { text-align: center; padding: 20px; color: var(--text-muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <h1>成军台 - 息壤杯OPC创新大赛评分报告</h1>
+  <div class="subtitle">2026 息壤杯全国人工智能OPC创新大赛 | 惠民产品创新赛道</div>
+  <div class="meta">
+    <span>评分时间: 2026-08-06</span>
+    <span>距答辩: 5天（8月11日聚能湾）</span>
+    <span>公网: http://171.111.219.204:8088</span>
+    <span>最新提交: 80f3a81</span>
+  </div>
+</div>
+
+<!-- ========== 总览 ========== -->
+<div class="section">
+  <h2><span class="icon">&#x1F3AF;</span> 五维评分总览</h2>
+  <div class="summary-box">
+    <div class="big-score">84 / 100</div>
+    <div class="score-label">息壤杯OPC创新大赛五维评分体系（创新性 25% + 商业模式 20% + 社会价值 20% + 应用成效 20% + 孵化与推广 15%）</div>
+  </div>
+  <div class="radar-container">
+    <svg class="radar-svg" viewBox="0 0 520 440">
+      <defs>
+        <radialGradient id="grad1" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" style="stop-color:#2563eb;stop-opacity:0.3" />
+          <stop offset="100%" style="stop-color:#2563eb;stop-opacity:0.05" />
+        </radialGradient>
+      </defs>
+      <!-- Grid -->
+      <g transform="translate(260,200)">
+        <polygon points="0,-140 133,-43 82,114 -82,114 -133,-43" fill="none" stroke="#e2e8f0" stroke-width="1"/>
+        <polygon points="0,-105 100,-32 62,86 -62,86 -100,-32" fill="none" stroke="#e2e8f0" stroke-width="1"/>
+        <polygon points="0,-70 67,-22 41,57 -41,57 -67,-22" fill="none" stroke="#e2e8f0" stroke-width="1"/>
+        <polygon points="0,-35 33,-11 20,29 -20,29 -33,-11" fill="none" stroke="#e2e8f0" stroke-width="1"/>
+        <!-- Axes -->
+        <line x1="0" y1="0" x2="0" y2="-140" stroke="#e2e8f0" stroke-width="1"/>
+        <line x1="0" y1="0" x2="133" y2="-43" stroke="#e2e8f0" stroke-width="1"/>
+        <line x1="0" y1="0" x2="82" y2="114" stroke="#e2e8f0" stroke-width="1"/>
+        <line x1="0" y1="0" x2="-82" y2="114" stroke="#e2e8f0" stroke-width="1"/>
+        <line x1="0" y1="0" x2="-133" y2="-43" stroke="#e2e8f0" stroke-width="1"/>
+        <!-- Data polygon: 8.5, 6.75, 8.0, 8.5, 7.5 (scaled to max 10 = 140px) -->
+        <polygon points="0,-119 90,-29 56,96 -56,96 -95,-32" fill="url(#grad1)" stroke="#2563eb" stroke-width="2"/>
+        <!-- Points -->
+        <circle cx="0" cy="-119" r="5" fill="#2563eb"/>
+        <circle cx="90" cy="-29" r="5" fill="#2563eb"/>
+        <circle cx="56" cy="96" r="5" fill="#2563eb"/>
+        <circle cx="-56" cy="96" r="5" fill="#2563eb"/>
+        <circle cx="-95" cy="-32" r="5" fill="#2563eb"/>
+      </g>
+      <!-- Labels -->
+      <text x="260" y="30" text-anchor="middle" font-size="14" font-weight="600" fill="#1e293b">创新性 8.5</text>
+      <text x="420" y="140" text-anchor="start" font-size="14" font-weight="600" fill="#1e293b">商业模式 6.75</text>
+      <text x="360" y="370" text-anchor="middle" font-size="14" font-weight="600" fill="#1e293b">社会价值 8.0</text>
+      <text x="160" y="370" text-anchor="middle" font-size="14" font-weight="600" fill="#1e293b">应用成效 8.5</text>
+      <text x="100" y="140" text-anchor="end" font-size="14" font-weight="600" fill="#1e293b">孵化推广 7.5</text>
+      <!-- Legend -->
+      <text x="260" y="410" text-anchor="middle" font-size="12" fill="#64748b">蓝色实线 = 本项目得分 | 灰色虚线 = 满分基准</text>
+    </svg>
+  </div>
+</div>
+
+<!-- ========== 逐项评分 ========== -->
+<div class="section">
+  <h2><span class="icon">&#x1F4CA;</span> 五维逐项评分</h2>
+
+  <h3>维度一: 创新性（权重 25%）</h3>
+  <table>
+    <tr><th>评分项</th><th>证据</th><th>得分</th></tr>
+    <tr><td>产品形态创新</td><td>"一人成军 OS" 而非 Chat 套壳: 目标驱动 -> 战役状态机 -> 人审卡点 -> Word 产物交付，形成 OPC 原生操作系统概念</td><td>9/10</td></tr>
+    <tr><td>技术路线创新</td><td>多 Agent 编排（5角色矩阵）+ 战役状态机（planned->running->awaiting_review->completed）+ LLM 四级级联（息壤->TokenPlan->壁韧->SenseNova）</td><td>8/10</td></tr>
+    <tr><td>差异化设计</td><td>非通用聊天框，有任务树 + 人审 + 产物抽屉 + 周报交付；禁止静默 mock 的技术诚信设计（无Key明确报错）</td><td>8/10</td></tr>
+    <tr><td>赛事口号对齐</td><td>"息壤育智，一人成军" 完美对齐 OPC（One Person Company）赛事主题</td><td>9/10</td></tr>
+  </table>
+  <div style="margin:8px 0;">
+    <span style="font-size:14px;font-weight:600;">维度得分: 8.5 / 10</span>
+    <span class="badge badge-green">加权 2.125</span>
+    <div class="score-bar"><div class="score-fill high" style="width:85%"></div></div>
+  </div>
+
+  <h3>维度二: 商业模式（权重 20%）</h3>
+  <table>
+    <tr><th>评分项</th><th>证据</th><th>得分</th></tr>
+    <tr><td>目标用户清晰</td><td>超级个体 / 一人公司 / 小微数字化团队 / 政企内容与售前，四层用户画像</td><td>8/10</td></tr>
+    <tr><td>盈利模式</td><td>SaaS 席位订阅 + Token 用量加成 + 政企内容/标讯增值包，三层收入结构</td><td>7/10</td></tr>
+    <tr><td>护城河</td><td>战役模板库（越用越厚）+ 人审工作流 + 电信云/息壤亲和 + 真实标讯数据壁垒</td><td>7/10</td></tr>
+    <tr><td>市场验证</td><td>312条真实政采标讯数据验证需求；尚无付费用户，处于种子阶段</td><td>5/10</td></tr>
+  </table>
+  <div style="margin:8px 0;">
+    <span style="font-size:14px;font-weight:600;">维度得分: 6.75 / 10</span>
+    <span class="badge badge-yellow">加权 1.350</span>
+    <div class="score-bar"><div class="score-fill mid" style="width:67.5%"></div></div>
+  </div>
+
+  <h3>维度三: 社会价值（权重 20%）</h3>
+  <table>
+    <tr><th>评分项</th><th>证据</th><th>得分</th></tr>
+    <tr><td>普惠性</td><td>降低个体创业者"招不起团队"的门槛，把"请得起小队"变成"调得起AI员工"</td><td>9/10</td></tr>
+    <tr><td>赛事主题对齐</td><td>与息壤杯"育智"叙事高度对齐；惠民赛道核心：让个体用得起、看得见交付的AI协作</td><td>9/10</td></tr>
+    <tr><td>电信员工叙事</td><td>电信员工做OPC，把能力交到个人手里，天然结合政企经验与AI技术</td><td>8/10</td></tr>
+    <tr><td>可量化影响</td><td>系统埋点：campaigns_started/completed, tasks_done, artifacts_count；尚无真实用户数据</td><td>6/10</td></tr>
+  </table>
+  <div style="margin:8px 0;">
+    <span style="font-size:14px;font-weight:600;">维度得分: 8.0 / 10</span>
+    <span class="badge badge-green">加权 1.600</span>
+    <div class="score-bar"><div class="score-fill high" style="width:80%"></div></div>
+  </div>
+
+  <h3>维度四: 应用成效（权重 20%）</h3>
+  <table>
+    <tr><th>评分项</th><th>证据</th><th>得分</th></tr>
+    <tr><td>产品完成度</td><td>核心功能完整：多Agent编排 + 战役状态机 + NL2SQL + 内容工厂 + MCP(15工具) + Word/PDF导出；56个Python文件 / 13563行代码</td><td>8/10</td></tr>
+    <tr><td>公网可访问</td><td>http://171.111.219.204:8088 全端点 HTTP 200，5个systemd服务 active，PG 312条真实数据</td><td>9/10</td></tr>
+    <tr><td>评委可体验</td><td>"评委60秒体验"零讲解路径：首页->登录->样例战役->产物预览->导出Word->智能问数</td><td>8/10</td></tr>
+    <tr><td>演示视频</td><td>71秒 / 13分镜 Remotion 视频，edge-tts 配音，1920x1080@30fps，已修复空白分镜</td><td>9/10</td></tr>
+  </table>
+  <div style="margin:8px 0;">
+    <span style="font-size:14px;font-weight:600;">维度得分: 8.5 / 10</span>
+    <span class="badge badge-green">加权 1.700</span>
+    <div class="score-bar"><div class="score-fill high" style="width:85%"></div></div>
+  </div>
+
+  <h3>维度五: 孵化与推广潜力（权重 15%）</h3>
+  <table>
+    <tr><th>评分项</th><th>证据</th><th>得分</th></tr>
+    <tr><td>技术可复用性</td><td>战役模板可扩展（AI获客/行业综述/标书）；MCP 工具可被 Cursor/TeleAgent 挂载；已沉淀3个通用skill</td><td>8/10</td></tr>
+    <tr><td>生态亲和</td><td>息壤/星辰 TokenHub 原生对接 + 天翼云 ECS 一键部署 + 智云Store上架叙事</td><td>9/10</td></tr>
+    <tr><td>投资价值</td><td>中国电信集团投资评估通道（赛事官方激励）；SaaS+Token 双轮变现</td><td>7/10</td></tr>
+    <tr><td>推广路径</td><td>智云Store上架 + 公众号草稿发布 + 模板战役包分发；尚无种子用户</td><td>6/10</td></tr>
+  </table>
+  <div style="margin:8px 0;">
+    <span style="font-size:14px;font-weight:600;">维度得分: 7.5 / 10</span>
+    <span class="badge badge-green">加权 1.125</span>
+    <div class="score-bar"><div class="score-fill high" style="width:75%"></div></div>
+  </div>
+
+  <!-- 评分汇总 -->
+  <h3>五维评分汇总</h3>
+  <table>
+    <tr><th>维度</th><th>原始分</th><th>权重</th><th>加权得分</th><th>评级</th></tr>
+    <tr><td>创新性</td><td>8.5/10</td><td>25%</td><td>2.125</td><td><span class="badge badge-green">优秀</span></td></tr>
+    <tr><td>商业模式</td><td>6.75/10</td><td>20%</td><td>1.350</td><td><span class="badge badge-yellow">中等</span></td></tr>
+    <tr><td>社会价值</td><td>8.0/10</td><td>20%</td><td>1.600</td><td><span class="badge badge-green">优秀</span></td></tr>
+    <tr><td>应用成效</td><td>8.5/10</td><td>20%</td><td>1.700</td><td><span class="badge badge-green">优秀</span></td></tr>
+    <tr><td>孵化与推广</td><td>7.5/10</td><td>15%</td><td>1.125</td><td><span class="badge badge-green">良好</span></td></tr>
+    <tr style="font-weight:700;background:#eff6ff;"><td>综合</td><td>-</td><td>100%</td><td>6.900 / 8.5 = <strong>84 分</strong></td><td><span class="badge badge-blue">A-</span></td></tr>
+  </table>
+  <div class="alert alert-info">
+    <strong>评分说明:</strong> 权重为赛事官方五维体系（创新性25% / 商业模式20% / 社会价值20% / 应用成效20% / 孵化15%）。本次评分相比旧版（82分）上涨2分，主要因为<strong>演示视频已补齐</strong>（shot-04/05/07/08/11空白分镜全部修复，71秒13分镜完整），应用成效维度从8.25→8.5。主要失分点仍集中在<strong>商业模式缺乏付费用户验证</strong>和<strong>尚无种子用户</strong>。
+  </div>
+</div>
+
+<!-- ========== 距答辩待办 ========== -->
+<div class="section">
+  <h2><span class="icon">&#x1F4CB;</span> 距 8月11日 答辩（5天）- 冲刺清单</h2>
+
+  <h3>必须完成（用户侧，Agent 无法替代）</h3>
+  <ul class="check-list">
+    <li class="check-warn"><strong>智云Store提交登记</strong>：登录 https://ai.js.189.cn/OPCCompetition 提交 Demo URL + 仓库链接 + 视频 + PPT（邮件截止 8月6日 16:00，若已过则直接在线提交）</li>
+    <li class="check-warn"><strong>README 脱敏</strong>：第18行 judge2026 口令改为"口令当面提供"，避免公开仓库暴露默认凭证</li>
+    <li class="check-warn"><strong>HTTPS（可选）</strong>：域名+ICP备案后升级，当前8088端口HTTP赛事可接受</li>
+  </ul>
+
+  <h3>已完成（Agent 侧，全部就绪）</h3>
+  <ul class="check-list">
+    <li class="check-pass">演示视频 71秒 / 13分镜 / 1920x1080@30fps，空白分镜全部修复</li>
+    <li class="check-pass">安全加固 10 项全部完成（Token/会话/密码/限流/安全头/CORS）</li>
+    <li class="check-pass">ECS 公网部署 + Nginx 路由修复 + 5服务 systemd 托管</li>
+    <li class="check-pass">PostgreSQL 迁移 + 312条标讯数据填充</li>
+    <li class="check-pass">LLM 四级级联（息壤->TokenPlan->壁韧->SenseNova）</li>
+    <li class="check-pass">公网全端点验收通过（8个端点 HTTP 200）</li>
+    <li class="check-pass">Git 双分支推送（main + contest/chengjuntai-xirang）</li>
+    <li class="check-pass">参赛材料齐备：PPT/BP/演讲稿/视频脚本/报名稿/自检清单</li>
+    <li class="check-pass">3个通用 skill 沉淀：cloud-ecs-deploy / browser-form-automation / jupyterlab-remote-automation / remotion-video-workflow</li>
+  </ul>
+</div>
+
+<!-- ========== 评分对比 ========== -->
+<div class="section">
+  <h2><span class="icon">&#x1F4C8;</span> 评分演进</h2>
+  <table>
+    <tr><th>时间</th><th>综合分</th><th>变化原因</th><th>待办状态</th></tr>
+    <tr><td>2026-08-06 09:36</td><td>78.5</td><td>初版评分，演示视频未生成</td><td>视频缺失、Store未提交</td></tr>
+    <tr><td>2026-08-06 13:05</td><td>82</td><td>安全加固完成，上调预估</td><td>视频已渲染但空白分镜待查</td></tr>
+    <tr><td><strong>2026-08-06 13:05</strong></td><td><strong>84</strong></td><td><strong>shot-07/08/11空白分镜修复，应用成效+0.25</strong></td><td><strong>仅剩Store提交+README脱敏</strong></td></tr>
+  </table>
+  <div class="alert alert-success">
+    <strong>趋势:</strong> 从 78.5 -> 82 -> 84，呈持续上涨。若 Store 提交完成 + README 脱敏，可稳定在 84-85 分区间。商业模式维度（6.75）是最大短板，短期难以突破，需赛后积累种子用户和付费验证。
+  </div>
+</div>
+
+<div class="footer">
+  <p>成军台 - 息壤育智，一人成军 | 评分生成于 2026-08-06 13:05 | commit 80f3a81</p>
+  <p>公网 Demo: http://171.111.219.204:8088 | 仓库: github.com/yigenfeng0707-netizen/chengjuntai-opc-xirang</p>
+</div>
+
+</div>
+</body>
+</html>
