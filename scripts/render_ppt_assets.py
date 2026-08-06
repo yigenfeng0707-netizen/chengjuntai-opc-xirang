@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Render high-DPI Pillow stills for contest PPT (16:9 / 1920×1080)."""
+
 from __future__ import annotations
 
 import math
@@ -31,7 +32,7 @@ FONT_REG = Path(r"C:\Windows\Fonts\msyh.ttc")
 FONT_BD = Path(r"C:\Windows\Fonts\msyhbd.ttc")
 
 
-def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
+def font(size: int, bold: bool = False):
     path = FONT_BD if bold and FONT_BD.exists() else FONT_REG
     try:
         return ImageFont.truetype(str(path), size, index=0)
@@ -73,7 +74,9 @@ def mesh_bg(seed: int = 7, dark: bool = True) -> Image.Image:
     for j in range(0, H, 80):
         d.line([(0, j), (W, j)], fill=(*TEAL, 12 if dark else 22), width=1)
     # diagonal slash
-    d.polygon([(W * 0.62, 0), (W, 0), (W, H), (W * 0.48, H)], fill=(*TEAL, 22 if dark else 30))
+    d.polygon(
+        [(W * 0.62, 0), (W, 0), (W, H), (W * 0.48, H)], fill=(*TEAL, 22 if dark else 30)
+    )
     img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
     return img.filter(ImageFilter.GaussianBlur(radius=0.6))
 
@@ -107,7 +110,9 @@ def render_cover() -> Path:
     # left glass panel
     rounded_rect(d, [56, 160, 1180, 920], 28, GLASS_DK, (*TEAL, 80), 2)
     d.rectangle([56, 160, 68, 920], fill=TEAL)
-    d.text((110, 240), "2026 息壤杯 · 惠民 · AI+自选开放场景", font=font(24), fill=TEAL_LT)
+    d.text(
+        (110, 240), "2026 息壤杯 · 惠民 · AI+自选开放场景", font=font(24), fill=TEAL_LT
+    )
     d.text((110, 320), "成军台", font=font(96, True), fill=WHITE)
     d.text((110, 450), "息壤育智 · 一人成军", font=font(40, True), fill=TEAL_LT)
     d.text(
@@ -130,7 +135,18 @@ def render_cover() -> Path:
         d.text((1320, y + 28), val, font=font(42, True), fill=TEAL_LT)
         d.text((1320, y + 82), lab, font=font(22), fill=MUTED)
         y += 168
-    d.text((110, 860), "OPC OS on 息壤 ｜ github.com/yigenfeng0707-netizen/chengjuntai-opc-xirang", font=font(18), fill=SLATE)
+    d.text(
+        (110, 860),
+        "OPC OS on 息壤 ｜ 公网 Demo: http://171.111.219.204:8088",
+        font=font(18),
+        fill=SLATE,
+    )
+    d.text(
+        (110, 890),
+        "github.com/yigenfeng0707-netizen/chengjuntai-opc-xirang",
+        font=font(18),
+        fill=SLATE,
+    )
     return save(img.convert("RGB"), "01_cover.png")
 
 
@@ -139,18 +155,29 @@ def render_pain() -> Path:
     d = ImageDraw.Draw(img)
     brand_header(d, "痛点：缺的是操作系统", "不是又一个对话框", dark=False)
     cards = [
-        ("01", "团队量级的活", "一人公司 / 超级个体\n活是一支团队的量\n缺编辑部与作战台"),
+        (
+            "01",
+            "团队量级的活",
+            "一人公司 / 超级个体\n活是一支团队的量\n缺编辑部与作战台",
+        ),
         ("02", "Chat 套壳失效", "不可验收 · 无协作\n无周报 · 无法交付\n给客户或上级"),
         ("03", "政企链路割裂", "种草 · 标讯 · 标书\n各自为战\n缺统一闭环"),
     ]
     for i, (n, title, body) in enumerate(cards):
         x0 = 72 + i * 600
-        rounded_rect(d, [x0, 280, x0 + 560, 920], 24, (255, 255, 255, 230), (*TEAL, 60), 2)
+        rounded_rect(
+            d, [x0, 280, x0 + 560, 920], 24, (255, 255, 255, 230), (*TEAL, 60), 2
+        )
         d.rectangle([x0, 280, x0 + 560, 292], fill=TEAL)
         d.text((x0 + 40, 330), n, font=font(36, True), fill=TEAL)
         d.text((x0 + 40, 400), title, font=font(32, True), fill=INK)
         d.text((x0 + 40, 500), body, font=font(24), fill=SLATE, spacing=14)
-    d.text((72, 980), "评委要的是可点通的路径，不是概念 PPT", font=font(22, True), fill=TEAL_DK)
+    d.text(
+        (72, 980),
+        "评委要的是可点通的路径，不是概念 PPT",
+        font=font(22, True),
+        fill=TEAL_DK,
+    )
     return save(img.convert("RGB"), "02_pain.png")
 
 
@@ -165,7 +192,9 @@ def render_solution() -> Path:
         rounded_rect(d, [x, y, x + 280, y + 120], 18, WHITE, TEAL, 3)
         d.text((x + 28, y + 38), s, font=font(26, True), fill=INK)
         if i < len(steps) - 1:
-            d.polygon([(x + 300, y + 50), (x + 330, y + 60), (x + 300, y + 70)], fill=TEAL)
+            d.polygon(
+                [(x + 300, y + 50), (x + 330, y + 60), (x + 300, y + 70)], fill=TEAL
+            )
         x += 360
     # bottom feature strip
     feats = [
@@ -176,7 +205,9 @@ def render_solution() -> Path:
     ]
     for i, (a, b) in enumerate(feats):
         x0 = 80 + i * 460
-        rounded_rect(d, [x0, 560, x0 + 430, 880], 20, (255, 255, 255, 235), (*TEAL, 50), 2)
+        rounded_rect(
+            d, [x0, 560, x0 + 430, 880], 20, (255, 255, 255, 235), (*TEAL, 50), 2
+        )
         d.text((x0 + 36, 620), a, font=font(28, True), fill=TEAL_DK)
         d.text((x0 + 36, 700), b, font=font(24), fill=SLATE)
     return save(img.convert("RGB"), "03_solution.png")
@@ -208,7 +239,9 @@ def render_timeline() -> Path:
 def render_agent_matrix() -> Path:
     img = mesh_bg(13, dark=False).convert("RGBA")
     d = ImageDraw.Draw(img)
-    brand_header(d, "AI 员工矩阵", "一人输入目标 · 五类角色并行 · 产物可验收", dark=False)
+    brand_header(
+        d, "AI 员工矩阵", "一人输入目标 · 五类角色并行 · 产物可验收", dark=False
+    )
     roles = [
         ("调研官", "渠道 / 竞品情报", "Research"),
         ("内容官", "种草文案与话术包", "Content"),
@@ -261,7 +294,12 @@ def render_architecture() -> Path:
     ]
     for x, t, sub in outs:
         box(x, 700, 400, 120, t, sub)
-    d.text((80, 900), "Primary：息壤 wishub-x6 ｜ Interim：TokenPlan / SenseNova ｜ 无 Key 明确失败", font=font(20), fill=MUTED)
+    d.text(
+        (80, 900),
+        "Primary：息壤 wishub-x6 ｜ Fallback：TokenPlan → 壁韧 → SenseNova ｜ PG 312条真库",
+        font=font(20),
+        fill=MUTED,
+    )
     return save(img.convert("RGB"), "06_architecture.png")
 
 
@@ -270,10 +308,10 @@ def render_metrics() -> Path:
     d = ImageDraw.Draw(img)
     brand_header(d, "真实数据与可验收产物", "浙江政采公开标讯入库 · 可刷新", dark=False)
     metrics = [
-        ("~382", "真实标讯条数", "owner=real"),
-        ("~12", "演示标讯", "样例兜底"),
-        ("2", "标准战役周包", "获客 + 综述"),
-        ("4", "问数产物位", "可预览验收"),
+        ("312", "真实标讯条数", "浙江政采 PostgreSQL"),
+        ("8", "数据表字段", "schema 可查询"),
+        ("2", "标准战役模板", "获客 + 综述"),
+        ("15", "MCP 工具数", "campaign / content / NL2SQL"),
     ]
     for i, (v, lab, sub) in enumerate(metrics):
         x0 = 72 + i * 460
@@ -290,14 +328,58 @@ def render_metrics() -> Path:
     for i, b in enumerate(bullets):
         d.ellipse([110, 640 + i * 100, 130, 660 + i * 100], fill=TEAL)
         d.text((160, 630 + i * 100), b, font=font(26), fill=INK)
-    return save(img.convert("RGB"), "07_metrics.png")
+    return save(img.convert("RGB"), "08_metrics.png")
+
+
+def render_llm_provider() -> Path:
+    """Slide 07: LLM provider cascade with badges."""
+    img = mesh_bg(15, dark=True).convert("RGBA")
+    d = ImageDraw.Draw(img)
+    brand_header(
+        d, "息壤 / 星辰 / 壁韧 · LLM 级联", "四轨就绪 · 无 Key 明确报错", dark=True
+    )
+
+    providers = [
+        ("Primary", "息壤 wishub-x6", "主办方 Token · 内部审批中", "0D9488", "高"),
+        ("Fallback 1", "TokenPlan", "过渡模型 · 真实 E2E", "38BDF8", "中"),
+        ("Fallback 2", "壁韧 deepseek-v4-flash", "算力直连 · 实测通过", "F59E0B", "高"),
+        ("Fallback 3", "SenseNova", "商汤 · 兜底保障", "A78BFA", "中"),
+    ]
+    for i, (role, name, note, color, level) in enumerate(providers):
+        x0 = 80 + i * 460
+        rounded_rect(d, [x0, 280, x0 + 430, 920], 20, GLASS_DK, (*TEAL, 80), 2)
+        # badge circle
+        d.ellipse([x0 + 150, 310, x0 + 290, 450], fill=INK, outline=TEAL, width=4)
+        d.text((x0 + 180, 360), role.split()[0], font=font(18), fill=MUTED)
+        if len(role.split()) > 1:
+            d.text((x0 + 180, 400), role.split()[1], font=font(24, True), fill=TEAL_LT)
+        d.text((x0 + 28, 480), name, font=font(26, True), fill=WHITE)
+        d.text((x0 + 28, 560), note, font=font(20), fill=MUTED, spacing=10)
+        # priority chip
+        chip_col = TEAL if level == "高" else SLATE
+        rounded_rect(d, [x0 + 28, 760, x0 + 160, 820], 10, (*chip_col, 60), chip_col, 2)
+        d.text((x0 + 48, 770), f"优先级: {level}", font=font(20), fill=WHITE)
+    # no key banner mock
+    rounded_rect(d, [80, 940, 1800, 1000], 10, (245, 158, 11, 60), (245, 158, 11), 2)
+    d.text(
+        (120, 950),
+        "无 Key 时: 橙色横幅 + 明确报错 · 禁止静默 mock",
+        font=font(22),
+        fill=(251, 191, 36),
+    )
+    return save(img.convert("RGB"), "07_llm_provider.png")
 
 
 def render_evidence_matrix() -> Path:
     """Professional evidence-matrix table still (Pillow, not native pptx table)."""
     img = mesh_bg(21, dark=False).convert("RGBA")
     d = ImageDraw.Draw(img)
-    brand_header(d, "标书证据矩阵（示意）", "要求拆解 → 证据 → 负责人 → 优先级 · 一键导出 Word", dark=False)
+    brand_header(
+        d,
+        "标书证据矩阵（示意）",
+        "要求拆解 → 证据 → 负责人 → 优先级 · 一键导出 Word",
+        dark=False,
+    )
 
     headers = ["要求类型", "摘要", "证据来源", "负责人", "优先级"]
     rows = [
@@ -306,7 +388,7 @@ def render_evidence_matrix() -> Path:
         ("交付", "成军周报 Word", "样例导出包", "交付", "中"),
         ("安全", "密钥仅环境变量", "PROD_HARDENING", "运维", "高"),
         ("惠民", "降低一人公司门槛", "60s 路径 + 叙事", "产品", "中"),
-        ("数据", "真政采标讯入库", "bid_telecom.db ~382", "数据", "高"),
+        ("数据", "真政采标讯入库", "PostgreSQL 312条", "数据", "高"),
     ]
     # table geometry
     x0, y0 = 72, 260
@@ -328,18 +410,35 @@ def render_evidence_matrix() -> Path:
                 fill = CHIP_HI
             elif i == 4 and cell == "中":
                 fill = CHIP_OK
-            rounded_rect(d, [cx, cy, cx + col_w[i] - 8, cy + row_h - 6], 8, fill, (226, 232, 240), 1)
+            rounded_rect(
+                d,
+                [cx, cy, cx + col_w[i] - 8, cy + row_h - 6],
+                8,
+                fill,
+                (226, 232, 240),
+                1,
+            )
             d.text((cx + 18, cy + 28), cell, font=font(20), fill=INK)
             cx += col_w[i]
-    d.text((72, 980), "材料工作台：粘贴招标文本 → 要求拆解 → 生成证据矩阵 → 导出 Word 附卷", font=font(20), fill=TEAL_DK)
-    return save(img.convert("RGB"), "08_evidence_matrix.png")
+    d.text(
+        (72, 980),
+        "材料工作台：粘贴招标文本 → 要求拆解 → 生成证据矩阵 → 导出 Word 附卷",
+        font=font(20),
+        fill=TEAL_DK,
+    )
+    return save(img.convert("RGB"), "09_evidence_matrix.png")
 
 
 def render_five_dim() -> Path:
     """Radar + score bars for five contest dimensions."""
     img = mesh_bg(23, dark=True).convert("RGBA")
     d = ImageDraw.Draw(img)
-    brand_header(d, "五大评审维度对位", "创新在 OS · 实用在周报 · 完整在 60 秒 · 技术在多智能体 · 价值在惠民", dark=True)
+    brand_header(
+        d,
+        "五大评审维度对位",
+        "创新在 OS · 实用在周报 · 完整在 60 秒 · 技术在多智能体 · 价值在惠民",
+        dark=True,
+    )
 
     dims = [
         ("创新性", 0.92, "一人成军 OS，而非 Chat 套壳"),
@@ -353,8 +452,16 @@ def render_five_dim() -> Path:
     cx, cy, R = 520, 620, 280
     n = len(dims)
     d.ellipse([cx - R, cy - R, cx + R, cy + R], outline=(*TEAL, 80), width=2)
-    d.ellipse([cx - R * 0.66, cy - R * 0.66, cx + R * 0.66, cy + R * 0.66], outline=(*TEAL, 50), width=1)
-    d.ellipse([cx - R * 0.33, cy - R * 0.33, cx + R * 0.33, cy + R * 0.33], outline=(*TEAL, 40), width=1)
+    d.ellipse(
+        [cx - R * 0.66, cy - R * 0.66, cx + R * 0.66, cy + R * 0.66],
+        outline=(*TEAL, 50),
+        width=1,
+    )
+    d.ellipse(
+        [cx - R * 0.33, cy - R * 0.33, cx + R * 0.33, cy + R * 0.33],
+        outline=(*TEAL, 40),
+        width=1,
+    )
     pts = []
     for i, (_, score, _) in enumerate(dims):
         ang = -math.pi / 2 + i * 2 * math.pi / n
@@ -381,13 +488,15 @@ def render_five_dim() -> Path:
         rounded_rect(d, [1280, y + 28, 1280 + 700, y + 52], 8, (30, 41, 59))
         rounded_rect(d, [1280, y + 28, 1280 + bw, y + 52], 8, TEAL)
         d.text((1760, y + 22), f"{int(score * 100)}", font=font(22, True), fill=TEAL_LT)
-    return save(img.convert("RGB"), "09_five_dimensions.png")
+    return save(img.convert("RGB"), "10_five_dimensions.png")
 
 
 def render_business() -> Path:
     img = mesh_bg(27, dark=False).convert("RGBA")
     d = ImageDraw.Draw(img)
-    brand_header(d, "商业模式与社会价值", "惠民不是口号：让个体用得起、看得见交付", dark=False)
+    brand_header(
+        d, "商业模式与社会价值", "惠民不是口号：让个体用得起、看得见交付", dark=False
+    )
     left = [
         ("对谁", "OPC / 超级个体 / 小微 / 政企一线"),
         ("怎么赚", "席位 + Token + 行业战役模板包"),
@@ -413,20 +522,22 @@ def render_business() -> Path:
         y = 420 + i * 160
         d.text((1040, y), a, font=font(26, True), fill=TEAL_DK)
         d.text((1040, y + 50), b, font=font(24), fill=INK)
-    return save(img.convert("RGB"), "10_business_value.png")
+    return save(img.convert("RGB"), "11_business_value.png")
 
 
 def render_demo_proof() -> Path:
     img = mesh_bg(29, dark=True).convert("RGBA")
     d = ImageDraw.Draw(img)
-    brand_header(d, "演示证明 · 提交对齐", "截止 2026-08-20 · 智云 Store 惠民赛道", dark=True)
+    brand_header(
+        d, "演示证明 · 提交对齐", "截止 2026-08-20 · 智云 Store 惠民赛道", dark=True
+    )
     items = [
         ("演示视频", "≤60 秒 · 1080p · 硬烧字幕 · CTA→Word→问数"),
         ("答辩 PPT", "本文件 · 图文并茂 · 现代科技风"),
         ("代码仓库", "chengjuntai-opc-xirang（主仓唯一）"),
         ("评委账号", "只读 judge · 口令现场提供（勿公开）"),
-        ("双轨 LLM", "息壤 primary 占位 · interim 真实 E2E"),
-        ("公网 Demo", "天翼云 HTTPS · 审批推进中"),
+        ("双轨 LLM", "息壤 primary · 壁韧 2nd fallback · 无 Key 明确失败"),
+        ("公网 Demo", "http://171.111.219.204:8088 · 天翼云 ECS"),
     ]
     for i, (t, s) in enumerate(items):
         col = i % 2
@@ -437,7 +548,7 @@ def render_demo_proof() -> Path:
         d.rectangle([x0, y0, x0 + 12, y0 + 180], fill=TEAL)
         d.text((x0 + 48, y0 + 40), t, font=font(28, True), fill=TEAL_LT)
         d.text((x0 + 48, y0 + 100), s, font=font(22), fill=MUTED)
-    return save(img.convert("RGB"), "11_demo_proof.png")
+    return save(img.convert("RGB"), "12_demo_proof.png")
 
 
 def render_roadmap() -> Path:
@@ -457,7 +568,7 @@ def render_roadmap() -> Path:
         d.text((x0 + 48, 560), body, font=font(26), fill=INK, spacing=14)
         if i < 2:
             d.polygon([(x0 + 555, 560), (x0 + 590, 580), (x0 + 555, 600)], fill=TEAL)
-    return save(img.convert("RGB"), "12_roadmap.png")
+    return save(img.convert("RGB"), "13_roadmap.png")
 
 
 def render_thanks() -> Path:
@@ -467,9 +578,11 @@ def render_thanks() -> Path:
     d.rectangle([200, 260, 220, 820], fill=TEAL)
     d.text((320, 360), "谢谢评委", font=font(72, True), fill=WHITE)
     d.text((320, 480), "息壤育智 · 一人成军", font=font(40, True), fill=TEAL_LT)
-    d.text((320, 580), "成军台 · 欢迎现场体验「评委 60 秒」路径", font=font(26), fill=MUTED)
+    d.text(
+        (320, 580), "成军台 · 欢迎现场体验「评委 60 秒」路径", font=font(26), fill=MUTED
+    )
     d.text((320, 680), "仓库 · Demo URL · 评委账号当面提供", font=font(22), fill=SLATE)
-    return save(img.convert("RGB"), "13_thanks.png")
+    return save(img.convert("RGB"), "14_thanks.png")
 
 
 def render_all() -> list[Path]:
@@ -481,6 +594,7 @@ def render_all() -> list[Path]:
         render_timeline(),
         render_agent_matrix(),
         render_architecture(),
+        render_llm_provider(),
         render_metrics(),
         render_evidence_matrix(),
         render_five_dim(),
