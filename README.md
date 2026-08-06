@@ -15,8 +15,8 @@
 
 1. 启动 Web：`scripts\start_local_demo.bat`（或 `python content_factory/web_server.py`）
 2. 打开 http://127.0.0.1:8090 → 点 **「评委 60 秒体验」**（或登录后首页同名大按钮）  
-   - 只读评委：`judge` / `judge2026`（口令细节见本地 `docs/ADMIN_ACCESS.local.md`，勿提交）  
-   - 演示写操作：`admin`（默认见 example / local 文档）
+   - 只读评委账号：`judge`（口令当面提供，详见本地 `docs/ADMIN_ACCESS.local.md`，勿提交）
+   - 演示写操作账号：`admin`（口令当面提供）
 3. 自动打开最佳样例战役（优先 `CMP_DEMO_WEEK_LEAD`）→ **产物抽屉**
 4. **导出 Word** 成军周报
 5. **智能问数**一张表（离线时显示标注清楚的缓存样例，不假装实时）
