@@ -152,6 +152,20 @@ mkdir -p "$APP_DIR/content_factory/articles"
 mkdir -p "$APP_DIR/content_factory/vector_db"
 mkdir -p "$APP_DIR/content_factory/knowledge"
 
+# ==================== 2.5 同步演示数据 ====================
+step "2.5. 同步演示战役与产物数据"
+
+# 从项目源码目录同步 data/*（含 campaigns/*.json / articles_meta.json / bid_projects.json / topics.json 等）
+# 本地开发时 data/ 已有战役和产物，部署时必须带过去
+DATA_SRC="${APP_DIR}"
+if [ -f "$DATA_SRC/content_factory/data/campaign_metrics.json" ]; then
+    info "检测到本地 data/ 目录，同步 campaigns 和产物数据…"
+    cp -r "$DATA_SRC/content_factory/data"/* "$APP_DIR/content_factory/data/"
+    info "已同步 $(ls "$APP_DIR/content_factory/data/campaigns/" 2>/dev/null | wc -l) 个战役文件"
+else
+    warn "未检测到本地 data/ 目录，跳过数据同步（后续可手动运行 seed 脚本）"
+fi
+
 chown -R $SERVICE_USER:$SERVICE_USER "$APP_DIR"
 info "目录权限已设置"
 
@@ -178,6 +192,7 @@ step "4. 安装 Python 依赖"
 # 合并所有服务的依赖
 $PIP install -q \
     flask>=3.0 \
+    werkzeug>=3.0 \
     aiohttp>=3.9 \
     requests>=2.31 \
     cachetools>=5.3 \
