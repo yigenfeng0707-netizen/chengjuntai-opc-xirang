@@ -588,13 +588,23 @@ PUBLIC_IP=$(curl -s --connect-timeout 5 http://ifconfig.me 2>/dev/null || \
             echo "YOUR_SERVER_IP")
 
 cat > /etc/nginx/sites-available/teleagent.conf << 'NGINXEOF'
+# 限流区域定义
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+
 server {
     listen 8088;
     server_name _;
     client_max_body_size 50M;
 
+    # 安全响应头
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
     # Web 面板 (FastAPI, 8090) — 包含所有 /api/ 路由
     location / {
+        limit_req zone=api_limit burst=20 nodelay;
         proxy_pass http://127.0.0.1:8090;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -604,6 +614,7 @@ server {
 
     # NL2SQL Flask 后端 (8082) — 只匹配 /api/v1/（避免与 FastAPI /api/ 冲突）
     location /api/v1/ {
+        limit_req zone=api_limit burst=20 nodelay;
         proxy_pass http://127.0.0.1:8082/api/v1/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

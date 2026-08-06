@@ -6,9 +6,11 @@
 """
 
 import os
+import secrets
 import datetime
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
 import uvicorn
@@ -35,7 +37,18 @@ from campaign import runner as camp_runner
 import agents_data
 
 app = FastAPI(title="成军台 · OPC OS on 息壤")
+
+# CORS 安全配置：仅允许同源访问（Nginx 反代场景下前后端同源）
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Nginx 反代同源部署，无需跨域
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
+)
+
 _sessions = {}
+_SESSION_TTL = 7200  # 会话有效期 2 小时（秒）
 
 
 def _token_user(request: Request):
@@ -44,6 +57,11 @@ def _token_user(request: Request):
     user = _sessions.get(token)
     if not user:
         raise HTTPException(status_code=401, detail="未登录或会话过期")
+    # 检查会话是否过期
+    expires_at = user.get("_expires_at")
+    if expires_at and datetime.datetime.now().timestamp() > expires_at:
+        _sessions.pop(token, None)
+        raise HTTPException(status_code=401, detail="会话已过期，请重新登录")
     return user
 
 
@@ -114,8 +132,9 @@ def login(req: LoginReq):
     # 刷新会话用户（含 last_login）
     user = auth_users.authenticate(req.u, req.p) or user
     display = user.get("email") or user.get("username") or req.u
-    token = f"tk_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}_{user['username']}"
+    token = f"tk_{secrets.token_hex(16)}"
     _sessions[token] = user
+    _sessions[token]["_expires_at"] = datetime.datetime.now().timestamp() + _SESSION_TTL
     op_logger.log("web_login", f"用户登录: {display}", user=user["username"])
     user_analytics.log_event(
         user["username"], "login", {"via": req.u, "role": user.get("role")}

@@ -10,6 +10,7 @@ znws-query 业务数据后端
 import os
 import re
 import json
+import hmac
 import datetime
 import sys
 from flask import Flask, request, jsonify
@@ -46,9 +47,11 @@ def _load_token():
         cfg_path = os.path.join(_CF_DIR, "config.yaml")
         with open(cfg_path, "r", encoding="utf-8") as f:
             cfg = yaml.safe_load(f) or {}
-        return cfg.get("nl2sql_backend", {}).get("api_token", "demo-token-2026")
+        return cfg.get("nl2sql_backend", {}).get("api_token") or os.environ.get(
+            "NL2SQL_API_TOKEN", ""
+        )
     except Exception:
-        return "demo-token-2026"
+        return os.environ.get("NL2SQL_API_TOKEN", "")
 
 
 DEMO_TOKEN = _load_token()
@@ -65,7 +68,7 @@ def auth_check():
         return None
     auth = request.headers.get("Authorization", "")
     token = auth.replace("Bearer ", "").strip()
-    if token != DEMO_TOKEN:
+    if not hmac.compare_digest(token, DEMO_TOKEN):
         return jsonify({"error": "鉴权失败：token 无效", "code": 401}), 401
 
 

@@ -11,6 +11,7 @@
 - 新注册 / 管理端新增 / 改密 → werkzeug 哈希（pbkdf2/scrypt）
 - 既有演示账号明文仍可登录；成功登录后惰性升级为哈希（不打断 judge/admin）
 """
+
 import os
 import json
 import datetime
@@ -29,7 +30,14 @@ _lock = threading.RLock()
 
 DEFAULT_ROLES = {
     "super_admin": ["*"],
-    "operator": ["run_task", "view", "export", "queue_control", "schedule_control", "view_all_campaigns"],
+    "operator": [
+        "run_task",
+        "view",
+        "export",
+        "queue_control",
+        "schedule_control",
+        "view_all_campaigns",
+    ],
     "user": ["run_task", "view", "export"],
     "guest": ["view", "export"],
     "judge": ["view"],
@@ -252,16 +260,17 @@ def list_roles() -> dict:
     return _load().get("roles", {})
 
 
-def register_user(email: str, password: str, display_name: str = "",
-                  username: Optional[str] = None) -> dict:
+def register_user(
+    email: str, password: str, display_name: str = "", username: Optional[str] = None
+) -> dict:
     """终端用户自助注册，role=user。成功返回公开用户信息，失败抛 ValueError。"""
     email = (email or "").strip().lower()
     password = password or ""
     display_name = (display_name or "").strip() or email.split("@")[0]
     if not email or "@" not in email:
         raise ValueError("请输入有效邮箱")
-    if len(password) < 6:
-        raise ValueError("密码至少 6 位")
+    if len(password) < 8:
+        raise ValueError("密码至少 8 位")
     data = _load()
     if _find_user(data, email):
         raise ValueError("该邮箱已注册")
@@ -290,8 +299,9 @@ def register_user(email: str, password: str, display_name: str = "",
     return _public_user(user, data.get("roles", {}))
 
 
-def add_user(username: str, password: str, role: str,
-             email: str = "", display_name: str = "") -> bool:
+def add_user(
+    username: str, password: str, role: str, email: str = "", display_name: str = ""
+) -> bool:
     data = _load()
     if any(u["username"] == username for u in data["users"]):
         return False
@@ -301,19 +311,21 @@ def add_user(username: str, password: str, role: str,
     role = ROLE_ALIASES.get(role, role)
     if role not in data.get("roles", DEFAULT_ROLES):
         role = "user"
-    data["users"].append({
-        "username": username,
-        "email": email,
-        "password": _hash_password(password),
-        "password_algo": "werkzeug" if generate_password_hash else "plain",
-        "display_name": display_name or username,
-        "role": role,
-        "enabled": True,
-        "created_at": _now(),
-        "last_login_at": None,
-        "profile": _empty_profile(),
-        "usage": _empty_usage(),
-    })
+    data["users"].append(
+        {
+            "username": username,
+            "email": email,
+            "password": _hash_password(password),
+            "password_algo": "werkzeug" if generate_password_hash else "plain",
+            "display_name": display_name or username,
+            "role": role,
+            "enabled": True,
+            "created_at": _now(),
+            "last_login_at": None,
+            "profile": _empty_profile(),
+            "usage": _empty_usage(),
+        }
+    )
     _save(data)
     return True
 
@@ -345,8 +357,12 @@ def set_user_role(identity: str, role: str) -> bool:
     return True
 
 
-def update_profile(identity: str, notes: Optional[str] = None,
-                   tags: Optional[list] = None, segment: Optional[str] = None) -> Optional[dict]:
+def update_profile(
+    identity: str,
+    notes: Optional[str] = None,
+    tags: Optional[list] = None,
+    segment: Optional[str] = None,
+) -> Optional[dict]:
     data = _load()
     u = _find_user(data, identity)
     if not u:
@@ -395,10 +411,12 @@ def default_password_risk() -> dict:
             continue
         if not u.get("enabled", True):
             continue
-        weak_users.append({
-            "username": name,
-            "hashed": _is_hashed(u.get("password") or ""),
-        })
+        weak_users.append(
+            {
+                "username": name,
+                "hashed": _is_hashed(u.get("password") or ""),
+            }
+        )
     return {
         "demo_accounts_enabled": weak_users,
         "recommend_change": bool(weak_users),
