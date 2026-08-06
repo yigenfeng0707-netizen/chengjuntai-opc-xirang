@@ -588,6 +588,8 @@ const ShotCaptions: React.FC<{ shot: Shot }> = ({ shot }) => {
 
       {isDrawer && (
         <div style={{
+          position: "relative",
+          zIndex: 10,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -654,6 +656,8 @@ const ShotCaptions: React.FC<{ shot: Shot }> = ({ shot }) => {
 
       {isExport && (
         <div style={{
+          position: "relative",
+          zIndex: 10,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -705,6 +709,8 @@ const ShotCaptions: React.FC<{ shot: Shot }> = ({ shot }) => {
 
       {isQuery && (
         <div style={{
+          position: "relative",
+          zIndex: 10,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -1002,11 +1008,14 @@ const ShotDeploy: React.FC<{ shot: Shot }> = ({ shot }) => {
 
   const urlText = "http://171.111.219.204:8088";
   const typedChars = Math.floor(interpolate(frame, [20, 60], [0, urlText.length], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }));
+  const cursorVisible = Math.floor(frame / 15) % 2 === 0;
 
   return (
     <AbsoluteFill style={{ opacity, transform }}>
       <GradientBg bg={shot.bg} />
       <div style={{
+        position: "relative",
+        zIndex: 10,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -1036,7 +1045,7 @@ const ShotDeploy: React.FC<{ shot: Shot }> = ({ shot }) => {
             fontWeight: 700,
           }}>
             {urlText.substring(0, typedChars)}
-            {typedChars < urlText.length && <span style={{ color: COLORS.accent, animation: "blink 1s infinite" }}>|</span>}
+            {typedChars < urlText.length && cursorVisible && <span style={{ color: COLORS.accent }}>|</span>}
           </span>
         </div>
         {/* Service indicators */}
