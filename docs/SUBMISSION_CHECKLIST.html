@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>息壤杯提交清单 - 成军台</title>
+<style>
+:root { --primary: #2563eb; --danger: #dc2626; --success: #16a34a; --warning: #d97706; }
+body { font-family: system-ui, sans-serif; max-width: 900px; margin: 20px auto; padding: 20px; background: #f8fafc; color: #1e293b; }
+.header { background: linear-gradient(135deg, #dc2626, #ef4444); color: white; padding: 30px; border-radius: 12px; margin-bottom: 24px; }
+.header h1 { margin: 0 0 8px; font-size: 26px; }
+.header .urgent { font-size: 18px; font-weight: bold; }
+.section { background: white; padding: 24px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+h2 { border-bottom: 2px solid var(--primary); padding-bottom: 8px; margin-top: 0; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+th { background: #f1f5f9; font-weight: 600; }
+.status-ok { color: var(--success); font-weight: 600; }
+.status-warn { color: var(--warning); font-weight: 600; }
+.status-danger { color: var(--danger); font-weight: 600; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+.badge-green { background: #dcfce7; color: #166534; }
+.badge-yellow { background: #fef3c7; color: #92400e; }
+.badge-red { background: #fee2e2; color: #991b1b; }
+.code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; }
+.alert { padding: 12px 16px; border-radius: 8px; margin: 12px 0; font-size: 14px; }
+.alert-danger { background: #fee2e2; border-left: 4px solid #dc2626; }
+.alert-warning { background: #fffbeb; border-left: 4px solid #d97706; }
+ul { line-height: 1.8; }
+.footer { text-align: center; padding: 20px; color: #64748b; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>息壤杯 OPC 创新大赛 · 作品提交清单</h1>
+  <div class="urgent">⏰ 紧急：距提交截止仅剩约 2.5 小时（8月6日 16:00）</div>
+  <div style="margin-top:12px;opacity:0.9;font-size:14px;">
+    参赛项目：成军台——基于多智能体协作的AI员工操作系统 | 赛道：惠民产品创新<br>
+    队伍：soloAIopc（C2组）| 答辩时间：8月11日 14:12-14:24 聚能湾C组111室
+  </div>
+</div>
+
+<div class="section">
+  <h2>📋 提交材料清单</h2>
+  <table>
+    <tr><th>材料</th><th>状态</th><th>位置/链接</th><th>备注</th></tr>
+    <tr>
+      <td>演示视频</td>
+      <td class="status-ok">✓ 就绪</td>
+      <td><span class="code">demo-video/out/demo-video.mp4</span></td>
+      <td><span class="badge badge-green">71秒/13分镜/1080p</span></td>
+    </tr>
+    <tr>
+      <td>答辩 PPT</td>
+      <td class="status-ok">✓ 就绪</td>
+      <td><span class="code">docs/成军台_息壤杯预赛答辩.pptx</span></td>
+      <td><span class="badge badge-green">15页（含支付宝AI支付规划）</span></td>
+    </tr>
+    <tr>
+      <td>项目仓库</td>
+      <td class="status-ok">✓ 就绪</td>
+      <td><span class="code">github.com/yigenfeng0707-netizen/chengjuntai-opc-xirang</span></td>
+      <td><span class="badge badge-green">main已同步</span></td>
+    </tr>
+    <tr>
+      <td>公网 Demo</td>
+      <td class="status-ok">✓ 就绪</td>
+      <td><span class="code">http://171.111.219.204:8088</span></td>
+      <td><span class="badge badge-green">8端点HTTP 200</span></td>
+    </tr>
+    <tr>
+      <td>评分报告</td>
+      <td class="status-ok">✓ 就绪</td>
+      <td><span class="code">docs/SCORE_REPORT_2026.html</span></td>
+      <td><span class="badge badge-green">五维89分</span></td>
+    </tr>
+    <tr>
+      <td>README</td>
+      <td class="status-warn">⚠ 需确认</td>
+      <td><span class="code">README.md</span></td>
+      <td><span class="badge badge-yellow">第18行judge2026口令需脱敏</span></td>
+    </tr>
+    <tr>
+      <td>HTTPS 证书</td>
+      <td class="status-warn">⚠ 可选</td>
+      <td>-</td>
+      <td><span class="badge badge-yellow">808端口赛事可接受</span></td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <h2>🚀 提交通道</h2>
+  
+  <div class="alert alert-danger">
+    <strong>⚠ Agent 无法代替你登录！</strong>智云Store需要你的个人账号登录，Agent 无法自动操作。<br>
+    请<strong>立即</strong>手动完成以下步骤：
+  </div>
+  
+  <h3>通道一：智云Store在线提交（推荐）</h3>
+  <ul>
+    <li>网址：<strong>https://ai.js.189.cn/OPCCompetition</strong></li>
+    <li>点击"OPC大赛"专区 → 登录你的智云Store账号</li>
+    <li>上传：<strong>演示视频</strong> + <strong>答辩PPT</strong> + <strong>GitHub仓库链接</strong> + <strong>公网Demo链接</strong></li>
+    <li>填写项目简介（参考下方模板）</li>
+  </ul>
+  
+  <h3>通道二：邮件提交（备用）</h3>
+  <ul>
+    <li>收件人：<strong>jiec2shibei@163.com</strong></li>
+    <li>主题格式：<strong>C2+soloAIopc+成军台</strong></li>
+    <li>附件：视频 + PPT + 说明文档</li>
+    <li>⚠ 截止时间 <strong>8月6日 16:00</strong>，务必在截止时间前发送</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2>📝 项目简介模板（复制到智云Store）</h2>
+  <div style="background:#f8fafc;padding:16px;border-radius:8px;border:1px solid #e2e8f0;font-size:14px;">
+    <strong>项目名称：</strong>成军台——基于多智能体协作的AI员工操作系统<br><br>
+    <strong>一句话介绍：</strong>一人成军：让个体创业者像指挥一个团队一样调度5个AI员工（调研/内容/数据/运营/复盘），从目标到可验收产物全程自动执行。<br><br>
+    <strong>核心能力：</strong><br>
+    · 多Agent编排（5角色矩阵 + 战役状态机）<br>
+    · LLM四级级联（息壤→TokenPlan→壁韧→SenseNova）<br>
+    · 15个MCP工具（NL2SQL/政采标讯/内容工厂）<br>
+    · 公网部署（天翼云ECS + Nginx + PostgreSQL）<br>
+    · 产物交付（Word/PDF导出 + 智能周报）<br><br>
+    <strong>应用场景：</strong>个体经营/客户运营（惠民赛道）——AI获客跟进、行业综述、招投标情报<br><br>
+    <strong>Demo地址：</strong>http://171.111.219.204:8088<br>
+    <strong>仓库地址：</strong>github.com/yigenfeng0707-netizen/chengjuntai-opc-xirang<br><br>
+    <strong>评分：</strong>五维评分89分（A级）——创新性8.5/商业模式7.75/社会价值8.5/应用成效8.5/孵化推广8.0
+  </div>
+</div>
+
+<div class="section">
+  <h2>⚡ 距截止前的待办（按优先级）</h2>
+  <ol>
+    <li><strong>【5分钟】登录智云Store</strong>：https://ai.js.189.cn/OPCCompetition，确认提交入口可用</li>
+    <li><strong>【5分钟】README脱敏</strong>：把 README.md 第18行 judge2026 口令改为"口令当面提供"</li>
+    <li><strong>【10分钟】上传材料</strong>：视频 + PPT + 项目简介 → 智云Store</li>
+    <li><strong>【5分钟】邮件备份</strong>：把视频+PPT发到 jiec2shibei@163.com（主题 C2+soloAIopc+成军台）</li>
+    <li><strong>【10分钟】公网验证</strong>：用手机4G访问 http://171.111.219.204:8088 确认外网可达</li>
+  </ol>
+  <div class="alert alert-warning">
+    <strong>Agent 能帮你做的：</strong>README脱敏、公网验证、Git提交<br>
+    <strong>Agent 无法做的：</strong>登录智云Store、上传文件（需要你的个人账号）
+  </div>
+</div>
+
+<div class="section">
+  <h2>📞 赛事联系</h2>
+  <ul>
+    <li>邮件：jiec2shibei@163.com</li>
+    <li>答辩地点：聚能湾分赛点 C组111室</li>
+    <li>签到：8月11日 13:15</li>
+    <li>答辩：8月11日 14:12-14:24（12分钟）</li>
+  </ul>
+</div>
+
+<div class="footer">
+  <p>成军台 · 息壤育智，一人成军 | 提交清单生成于 2026-08-06 13:28</p>
+  <p>祝答辩顺利！💪</p>
+</div>
+
+</body>
+</html>
