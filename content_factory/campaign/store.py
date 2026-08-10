@@ -33,18 +33,22 @@ def _path(cid: str) -> str:
 
 
 def _load_metrics() -> dict:
+    _default = {
+        "campaigns_started": 0,
+        "campaigns_completed": 0,
+        "tasks_done": 0,
+        "artifacts_count": 0,
+        "est_hours_saved": 0.0,
+        "llm_calls_ok": 0,
+        "llm_calls_fail": 0,
+    }
     if not os.path.exists(METRICS_FILE):
-        return {
-            "campaigns_started": 0,
-            "campaigns_completed": 0,
-            "tasks_done": 0,
-            "artifacts_count": 0,
-            "est_hours_saved": 0.0,
-            "llm_calls_ok": 0,
-            "llm_calls_fail": 0,
-        }
-    with open(METRICS_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+        return _default
+    try:
+        with open(METRICS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return _default
 
 
 def _save_metrics(m: dict):
@@ -180,8 +184,12 @@ def get_campaign(cid: str) -> Optional[dict]:
     fp = _path(cid)
     if not os.path.exists(fp):
         return None
-    with open(fp, "r", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(fp, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        # 文件损坏（空文件/写入中断）— 返回 None 而非抛异常
+        return None
 
 
 def update_campaign(cid: str, **kwargs) -> Optional[dict]:
@@ -191,8 +199,18 @@ def update_campaign(cid: str, **kwargs) -> Optional[dict]:
             return None
         camp.update(kwargs)
         camp["updated_at"] = _now()
-        with open(_path(cid), "w", encoding="utf-8") as f:
-            json.dump(camp, f, ensure_ascii=False, indent=2)
+        # 原子写入：先写临时文件再重命名，防止写入中断导致文件损坏
+        fp = _path(cid)
+        tmp = fp + ".tmp"
+        try:
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(camp, f, ensure_ascii=False, indent=2)
+            os.replace(tmp, fp)  # 原子操作：要么成功替换，要么保留旧文件
+        except OSError:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
         return camp
 
 
@@ -203,8 +221,9 @@ def list_campaigns(limit: int = 50) -> list:
     )[:limit]
     out = []
     for name in files:
-        with open(os.path.join(CAMPAIGNS_DIR, name), "r", encoding="utf-8") as f:
-            c = json.load(f)
+        try:
+            with open(os.path.join(CAMPAIGNS_DIR, name), "r", encoding="utf-8") as f:
+                c = json.load(f)
             out.append({
                 "id": c["id"],
                 "goal": c["goal"],
@@ -218,6 +237,8 @@ def list_campaigns(limit: int = 50) -> list:
                 "llm_provider": c.get("llm_provider"),
                 "demo_snapshot": bool(c.get("demo_snapshot")),
             })
+        except (json.JSONDecodeError, OSError, KeyError):
+            continue  # 跳过损坏的战役文件
     return out
 
 
