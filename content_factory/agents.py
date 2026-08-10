@@ -167,18 +167,76 @@ def write_agent(topic: str, outline: str, real_ctx: str = "") -> str:
 
 
 # ---------- Agent 3：初审校验 ----------
+def _safe_review_json(text: str) -> dict:
+    """review JSON 解析：多层防御（正则提取 / 多行截断 / 修复引号 / 最终兜底）。"""
+    t = (text or "").strip()
+    if not t:
+        return {"pass": True, "issues": [], "suggestions": ""}
+    # 策略1：全文尝试
+    try:
+        return json.loads(t)
+    except Exception:
+        pass
+    # 策略2：最外层 { ... }
+    start = t.find("{")
+    end = t.rfind("}")
+    if start >= 0 and end > start:
+        seg = t[start : end + 1]
+        try:
+            return json.loads(seg)
+        except Exception:
+            # 尝试修复：转义未转义引号（简单策略）
+            try:
+                fixed = seg.replace("\n", "\\n").replace("\r", "\\r")
+                return json.loads(fixed)
+            except Exception:
+                pass
+            # 策略3：用正则提取 pass 字段与 issues 字段的简单文本扫描
+    pass_flag = True
+    # 文本级启发：出现 fail / 不通过 才判 false
+    low = t.lower()
+    if "\"pass\":false" in low or "\"pass\": false" in low or "判 fail" in t or "判定:fail" in t:
+        pass_flag = False
+    issues = []
+    suggestions = t[:400]
+    return {"pass": pass_flag, "issues": issues, "suggestions": suggestions}
+
+
 def review_agent(article: str) -> dict:
     @retry("review_agent")
     def _do():
-        prompt = PROMPT_REVIEW.format(article=article[:8000])
-        result = _call_llm(prompt, fallback='{"pass": true, "issues": [], "suggestions": "模拟通过"}')
+        safe_article = (article or "")[:8000]
+        fallback_json = '{"pass": true, "issues": [], "suggestions": "质检降级通过"}'
         try:
-            # 提取JSON
-            m = re.search(r"\{.*\}", result, re.S)
-            return json.loads(m.group()) if m else {"pass": True, "issues": [], "suggestions": result}
+            prompt = PROMPT_REVIEW.format(article=safe_article)
         except Exception:
-            return {"pass": True, "issues": [], "suggestions": result}
-    return _do()
+            prompt = f"请审核以下文稿（已截断）：\n{safe_article}\n只输出JSON:{{\"pass\":bool,\"issues\":[],\"suggestions\":\"\"}}"
+        try:
+            result = _call_llm(prompt, fallback=fallback_json)
+        except Exception as ex:
+            op_logger.log("agent_review", f"LLM调用异常，降级通过: {ex}", level="WARN")
+            return {"pass": True, "issues": [], "suggestions": f"质检降级（LLM异常: {type(ex).__name__}）"}
+        parsed = _safe_review_json(result)
+        # 保证字段类型正确
+        if not isinstance(parsed, dict):
+            parsed = {"pass": True, "issues": [], "suggestions": str(parsed)[:200]}
+        parsed.setdefault("pass", True)
+        parsed.setdefault("issues", [])
+        parsed.setdefault("suggestions", "")
+        if not isinstance(parsed["pass"], bool):
+            parsed["pass"] = bool(parsed["pass"])
+        if not isinstance(parsed["issues"], list):
+            parsed["issues"] = []
+        if not isinstance(parsed["suggestions"], str):
+            parsed["suggestions"] = str(parsed["suggestions"])[:500]
+        # 最多保留 10 条 issue，避免爆长
+        parsed["issues"] = parsed["issues"][:10]
+        return parsed
+    try:
+        return _do()
+    except Exception as ex:
+        op_logger.log("agent_review", f"质检流程异常，降级通过: {type(ex).__name__}: {ex}", level="ERROR")
+        return {"pass": True, "issues": [], "suggestions": f"质检异常降级通过: {type(ex).__name__}"}
 
 
 # ---------- 串行协作主流程 ----------

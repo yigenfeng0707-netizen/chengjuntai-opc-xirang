@@ -137,7 +137,7 @@ def render_cover() -> Path:
         y += 168
     d.text(
         (110, 860),
-        "OPC OS on 息壤 ｜ 公网 Demo: http://171.111.219.204:8088",
+        "OPC OS on 息壤 ｜ 公网 Demo: https://opcopcos.cn:8088",
         font=font(18),
         fill=SLATE,
     )
@@ -537,7 +537,7 @@ def render_demo_proof() -> Path:
         ("代码仓库", "chengjuntai-opc-xirang（主仓唯一）"),
         ("评委账号", "只读 judge · 口令现场提供（勿公开）"),
         ("双轨 LLM", "息壤 primary · 壁韧 2nd fallback · 无 Key 明确失败"),
-        ("公网 Demo", "http://171.111.219.204:8088 · 天翼云 ECS"),
+        ("公网 Demo", "https://opcopcos.cn:8088 · 天翼云 ECS"),
     ]
     for i, (t, s) in enumerate(items):
         col = i % 2

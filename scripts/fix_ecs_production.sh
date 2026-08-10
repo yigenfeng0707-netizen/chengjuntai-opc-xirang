@@ -109,7 +109,7 @@ if echo "$LOGIN_RES" | grep -q '"token"'; then
     echo "  ✅ 标讯数: $BIDS"
     
     echo ""
-    echo "✅ 修复完成！请访问 http://171.111.219.204:8088 验证"
+    echo "✅ 修复完成！请访问 https://opcopcos.cn:8088 验证"
 else
     ERR=$(echo "$LOGIN_RES" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('error','unknown'))" 2>/dev/null || echo "$LOGIN_RES")
     echo "  ❌ 登录失败: $ERR"

@@ -142,7 +142,7 @@
       "audio": "audio/shot-11.mp3",
       "audioDurationSec": 4.776,
       "narration": "天翼云ECS公网部署，五服务全部在线。",
-      "visual": "公网部署证明：天翼云ECS架构图，公网URL「http://171.111.219.204:8088」大号显示，5个服务状态指示灯全部绿色",
+      "visual": "公网部署证明：天翼云ECS架构图，公网URL「https://opcopcos.cn:8088」大号显示，5个服务状态指示灯全部绿色",
       "action": "架构图从中心展开，URL地址打字机效果出现，五个指示灯依次点亮（绿色），底部「systemd·Restart=always」标注",
       "visualType": "section",
       "bg": "#0F172A",

@@ -57,6 +57,7 @@ backups/
 
 # ========== 归档/清理 ==========
 archive/
+_archived/
 
 # ========== IDE ==========
 .vscode/

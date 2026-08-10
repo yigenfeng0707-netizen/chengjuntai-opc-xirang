@@ -3,14 +3,24 @@
 成军台 Web：FastAPI + 成军看板前端
 保留原内容工厂接口，新增战役（Campaign）API
 含邮箱登录/注册、权限隔离、超级管理员用户洞察
+
+鲁棒增强：
+  · 全局异常处理器：拦截所有未捕获异常，返回友好 JSON，不泄露堆栈
+  · 统一错误包装：_err / _ok 便捷构造
+  · Depends 鉴权异常保护
+  · 路径遍历防御（FileResponse 场景）
 """
 
 import os
+import sys
+import traceback
 import secrets
 import datetime
 from fastapi import FastAPI, Request, HTTPException, Depends
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 import uvicorn
@@ -37,6 +47,125 @@ from campaign import runner as camp_runner
 import agents_data
 
 app = FastAPI(title="成军台 · OPC OS on 息壤")
+
+# ---------- 统一响应格式 & 全局异常处理 ----------
+def _ok(data=None, **extra):
+    payload = {"ok": True}
+    if data is not None:
+        payload["data"] = data
+    if extra:
+        payload.update(extra)
+    return payload
+
+
+def _err(message: str, code: int = 400, detail=None, hint: str = None):
+    payload = {
+        "ok": False,
+        "error": str(message or "请求失败"),
+        "code": int(code),
+    }
+    if hint:
+        payload["hint"] = hint
+    if detail is not None:
+        # 只允许安全字段透传；不直接传异常堆栈
+        if isinstance(detail, (str, int, float, bool)) or detail is None:
+            payload["detail"] = detail
+        elif isinstance(detail, dict):
+            payload["detail"] = detail
+        else:
+            payload["detail"] = str(detail)
+    return payload
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """兜底：所有未捕获异常 → 友好 JSON，不泄露堆栈；但写详细日志。"""
+    try:
+        method = getattr(request, "method", "?")
+        url = str(getattr(request, "url", "?"))
+    except Exception:
+        method = "?"
+        url = "?"
+    tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    op_logger.log(
+        "web_unhandled",
+        f"{method} {url} | {type(exc).__name__}: {exc} | traceback_saved",
+        level="ERROR",
+    )
+    # 把详细堆栈写到文件（便于回溯但不返回给前端）
+    try:
+        import os as _os
+        from config_loader import LOGS_DIR as _LD
+        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        crash_file = _os.path.join(_LD, f"crash_{ts}.log")
+        with open(crash_file, "w", encoding="utf-8") as f:
+            f.write(f"{method} {url}\n")
+            f.write(f"{type(exc).__name__}: {exc}\n\n")
+            f.write(tb)
+    except Exception:
+        pass
+    # 400/401/403/404 业务异常保留原信息；5xx 统一隐藏
+    if isinstance(exc, HTTPException):
+        status = int(exc.status_code or 500)
+        if status < 500:
+            return JSONResponse(
+                status_code=status,
+                content=_err(exc.detail, code=status),
+            )
+        return JSONResponse(
+            status_code=500,
+            content=_err("服务内部错误，请稍后重试", code=500, hint=exc.detail if isinstance(exc.detail, str) and len(str(exc.detail)) < 80 else None),
+        )
+    return JSONResponse(
+        status_code=500,
+        content=_err("服务内部错误，请稍后重试", code=500, hint=None),
+    )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def starlette_http_handler(request: Request, exc: StarletteHTTPException):
+    """Starlette 层异常（例如 404 路由不存在）走统一格式。"""
+    status = int(exc.status_code or 500)
+    detail = exc.detail if isinstance(exc.detail, str) else "请求失败"
+    if status == 404:
+        detail = "接口不存在"
+    elif status == 405:
+        detail = "请求方法不允许"
+    return JSONResponse(
+        status_code=status,
+        content=_err(detail, code=status),
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """请求参数校验失败：提炼错误字段，不返回超长 JSON schema。"""
+    errs = []
+    for e in exc.errors() or []:
+        try:
+            loc = ".".join(str(x) for x in e.get("loc", [])) if isinstance(e, dict) else ""
+            msg = e.get("msg", "") if isinstance(e, dict) else str(e)
+            errs.append(f"{loc}:{msg}" if loc else str(msg))
+        except Exception:
+            errs.append(str(e))
+    short = "; ".join(errs[:3])
+    op_logger.log(
+        "web_validate",
+        f"参数校验失败: {short[:200]}",
+        level="WARN",
+    )
+    return JSONResponse(
+        status_code=422,
+        content=_err("请求参数不合法", code=422, hint=short or None),
+    )
+
+
+def _safe_http_error(status: int, message: str, hint: str = None):
+    """安全抛 HTTPException：统一长度与格式，避免 message 带堆栈。"""
+    msg = str(message or "")
+    if len(msg) > 300:
+        msg = msg[:297] + "..."
+    raise HTTPException(status_code=status, detail=msg if not hint else f"{msg}（{hint}）")
 
 # CORS 安全配置：仅允许同源访问（Nginx 反代场景下前后端同源）
 app.add_middleware(
@@ -332,12 +461,13 @@ class StartCampaignReq(BaseModel):
 @app.post("/api/campaign/start")
 def campaign_start(req: StartCampaignReq, user=Depends(_token_user)):
     _perm(user, "run_task")
-    if not req.goal.strip():
+    goal = (req.goal or "").strip()
+    if not goal:
         raise HTTPException(400, "目标不能为空")
     try:
-        camp = camp_runner.start_campaign(
-            req.goal.strip(),
-            template=req.template,
+        camp = camp_runner.start_campaign_async(
+            goal,
+            template=req.template or "lead_gen",
             created_by=user["username"],
             allow_mock=_allow_mock(),
             auto_approve=req.auto_approve
@@ -350,8 +480,18 @@ def campaign_start(req: StartCampaignReq, user=Depends(_token_user)):
             {"cid": camp.get("id"), "template": req.template},
         )
         return camp
+    except ValueError as ex:
+        # 参数/配置类错误：可透传
+        op_logger.log("web_campaign", f"发起战役失败(参数): {ex}", user=user.get("username"), level="WARN")
+        _safe_http_error(400, str(ex))
     except Exception as ex:
-        raise HTTPException(500, str(ex))
+        op_logger.log(
+            "web_campaign",
+            f"发起战役异常: {type(ex).__name__}: {ex}",
+            user=user.get("username"),
+            level="ERROR",
+        )
+        _safe_http_error(500, "发起战役失败，请稍后重试", hint="可稍后重试或缩短目标描述")
 
 
 @app.get("/api/campaigns")
@@ -382,14 +522,18 @@ def campaign_approve(cid: str, req: GateReq, user=Depends(_token_user)):
     if not _campaign_owner_ok(user, c):
         raise HTTPException(403, "无权操作该战役")
     try:
-        result = camp_runner.approve_gate(cid, note=req.note)
+        result = camp_runner.approve_gate(cid, note=req.note or "")
         auth_users.bump_usage(user["username"], "tasks_done", 1)
         user_analytics.log_event(
-            user["username"], "approve", {"cid": cid, "note": req.note}
+            user["username"], "approve", {"cid": cid, "note": (req.note or "")[:80]}
         )
         return result
+    except ValueError as ex:
+        op_logger.log("web_campaign", f"审批失败(参数)[{cid}]: {ex}", level="WARN", user=user.get("username"))
+        _safe_http_error(400, str(ex))
     except Exception as ex:
-        raise HTTPException(500, str(ex))
+        op_logger.log("web_campaign", f"审批异常[{cid}]: {type(ex).__name__}: {ex}", level="ERROR", user=user.get("username"))
+        _safe_http_error(500, "审批失败，请稍后重试")
 
 
 @app.post("/api/campaign/{cid}/reject")
@@ -404,7 +548,7 @@ def campaign_reject(cid: str, req: GateReq, user=Depends(_token_user)):
 
 
 @app.post("/api/campaign/{cid}/run")
-def campaign_run(cid: str, user=Depends(_token_user)):
+def campaign_run(cid: str, async_mode: bool = True, user=Depends(_token_user)):
     _perm(user, "run_task")
     c = camp_store.get_campaign(cid)
     if not c:
@@ -412,9 +556,52 @@ def campaign_run(cid: str, user=Depends(_token_user)):
     if not _campaign_owner_ok(user, c):
         raise HTTPException(403, "无权操作该战役")
     try:
+        # 默认异步模式：HTTP 立即返回，前端靠轮询 /api/campaign/{cid} 看进度
+        # 同步兜底：极少数调试场景显式传 async_mode=false
+        if async_mode:
+            result = camp_runner.run_pending_tasks_async(cid)
+            if isinstance(result, dict) and "status" in result:
+                result["async"] = True
+                result.setdefault("async_hint", "已启动后台执行，请稍后刷新战役详情查看进度")
+            return _ok(result)
         return camp_runner.run_pending_tasks(cid)
+    except ValueError as ex:
+        op_logger.log("web_campaign", f"执行失败(参数)[{cid}]: {ex}", level="WARN", user=user.get("username"))
+        _safe_http_error(400, str(ex))
     except Exception as ex:
-        raise HTTPException(500, str(ex))
+        op_logger.log("web_campaign", f"执行异常[{cid}]: {type(ex).__name__}: {ex}", level="ERROR", user=user.get("username"))
+        _safe_http_error(500, "执行战役失败，请稍后重试", hint="可稍后在战役详情页重新点「继续执行」")
+
+
+@app.post("/api/campaign/{cid}/reset_planning")
+def campaign_reset_planning(cid: str, user=Depends(_token_user)):
+    """修复卡在 planning 状态的战役：直接写入降级计划。"""
+    _perm(user, "run_task")
+    c = camp_store.get_campaign(cid)
+    if not c:
+        raise HTTPException(404, "战役不存在")
+    if not _campaign_owner_ok(user, c):
+        raise HTTPException(403, "无权操作该战役")
+    try:
+        r = camp_runner.reset_stuck_planning(cid=cid)
+        if cid in r.get("fixed", []):
+            return {"ok": True, "cid": cid, "action": "fixed", "message": "已修复为 planned（降级计划）"}
+        return {"ok": False, "cid": cid, "action": "skipped", "message": "战役不在 planning 状态或年龄不足"}
+    except Exception as ex:
+        op_logger.log("web_campaign", f"reset_planning 异常[{cid}]: {type(ex).__name__}: {ex}", level="ERROR", user=user.get("username"))
+        _safe_http_error(500, "修复失败", hint=str(ex))
+
+
+@app.post("/api/campaign/fix_stuck")
+def campaign_fix_stuck(user=Depends(_token_user)):
+    """批量扫描并修复所有卡在 planning 超过 120 秒的战役。"""
+    _perm(user, "run_task")
+    try:
+        r = camp_runner.reset_stuck_planning(cid=None, max_age_sec=120)
+        return {"ok": True, **r}
+    except Exception as ex:
+        op_logger.log("web_campaign", f"fix_stuck 异常: {type(ex).__name__}: {ex}", level="ERROR", user=user.get("username"))
+        _safe_http_error(500, "批量修复失败", hint=str(ex))
 
 
 @app.post("/api/campaign/{cid}/report")
@@ -428,17 +615,12 @@ def campaign_report(cid: str, user=Depends(_token_user)):
     try:
         path = camp_runner.export_weekly_report(cid)
         auth_users.bump_usage(user["username"], "reports_exported", 1)
-        camp = camp_store.get_campaign(cid)
+        camp = camp_store.get_campaign(cid) or c
         report = (camp or {}).get("report") or {}
         user_analytics.log_event(
             user["username"],
             "report",
-            {
-                "cid": cid,
-                "path": path,
-                "docx": report.get("docx"),
-                "pdf": report.get("pdf"),
-            },
+            {"cid": cid, "docx": bool(report.get("docx")), "pdf": bool(report.get("pdf"))},
         )
         return {
             "ok": True,
@@ -448,8 +630,12 @@ def campaign_report(cid: str, user=Depends(_token_user)):
             "md": report.get("md") or "",
             "campaign": camp,
         }
+    except ValueError as ex:
+        op_logger.log("web_report", f"导出周报失败(参数)[{cid}]: {ex}", level="WARN", user=user.get("username"))
+        _safe_http_error(400, str(ex))
     except Exception as ex:
-        raise HTTPException(500, str(ex))
+        op_logger.log("web_report", f"导出周报异常[{cid}]: {type(ex).__name__}: {ex}", level="ERROR", user=user.get("username"))
+        _safe_http_error(500, "导出周报失败，请稍后重试")
 
 
 @app.post("/api/campaign/{cid}/report_docx")
@@ -1002,63 +1188,86 @@ class RunReq(BaseModel):
 @app.post("/api/run")
 def run(req: RunReq, user=Depends(_token_user)):
     _perm(user, "run_task")
-    op_logger.log("web_run", f"手动执行: {req.action}", user=user["username"])
-    if req.action == "collect_topics":
-        return topic_collector.collect_topics(req.params.get("topk", 6))
-    if req.action == "generate_article":
-        result = agents.generate_article(
-            req.params.get("topic", ""),
-            req.params.get("summary", ""),
-            req.params.get("tags"),
-            campaign_id=req.params.get("campaign_id"),
+    action = (req.action or "").strip()
+    if not action:
+        raise HTTPException(400, "action 不能为空")
+    params = req.params if isinstance(req.params, dict) else {}
+    op_logger.log("web_run", f"手动执行: {action}", user=user["username"])
+    try:
+        if action == "collect_topics":
+            topk = int(params.get("topk") or 6)
+            topk = max(1, min(topk, 50))
+            return topic_collector.collect_topics(topk)
+        if action == "generate_article":
+            topic = (params.get("topic") or "").strip()
+            if not topic:
+                _safe_http_error(400, "选题不能为空")
+            result = agents.generate_article(
+                topic,
+                params.get("summary", "") or "",
+                params.get("tags"),
+                campaign_id=params.get("campaign_id"),
+            )
+            if isinstance(result, dict) and result.get("id"):
+                auth_users.bump_usage(user["username"], "articles_generated", 1)
+                user_analytics.log_event(
+                    user["username"],
+                    "generate_article",
+                    {"article_id": result.get("id")},
+                )
+            return result
+        if action == "quality_check":
+            return quality_gate.run_quality_check(article_id=params.get("article_id"))
+        if action == "publish_wechat_draft":
+            import wechat_publisher
+            return wechat_publisher.publish_article_to_draft(
+                params.get("article_id") or ""
+            )
+        if action == "full_pipeline":
+            from main import run_full_pipeline
+            topic = params.get("topic") or None
+            if topic and not str(topic).strip():
+                topic = None
+            result = run_full_pipeline(
+                topic=topic,
+                summary=params.get("summary", "") or "",
+                tags=params.get("tags"),
+                priority=int(params.get("priority") or 5),
+            )
+            if isinstance(result, dict) and result.get("article_id"):
+                auth_users.bump_usage(user["username"], "articles_generated", 1)
+            return result or {"ok": False, "error": "流水线无产出"}
+        if action == "analysis_topic_data":
+            return data_feedback.analyze_topic_data_with_nl2sql()
+        if action == "sync_knowledge_to_bid":
+            return bid_pipeline_link.sync_knowledge_to_bid()
+        if action == "fetch_bid_project_themes":
+            return bid_pipeline_link.fetch_bid_project_themes()
+        if action == "export_all":
+            return pdf_exporter.export_all()
+        if action == "export_article_pdf":
+            return {"file": pdf_exporter.export_article_by_id(params.get("article_id"))}
+        if action == "export_article_docx":
+            path = docx_exporter.export_article_by_id(params.get("article_id"))
+            return {
+                "ok": True,
+                "docx": path,
+                "download": f"/api/article/{params.get('article_id') or ''}/docx",
+            }
+        raise HTTPException(400, f"未知 action: {action}")
+    except HTTPException:
+        raise
+    except ValueError as ex:
+        op_logger.log("web_run", f"执行{action}失败(参数): {ex}", level="WARN", user=user.get("username"))
+        _safe_http_error(400, str(ex))
+    except Exception as ex:
+        op_logger.log(
+            "web_run",
+            f"执行{action}异常: {type(ex).__name__}: {ex}",
+            level="ERROR",
+            user=user.get("username"),
         )
-        auth_users.bump_usage(user["username"], "articles_generated", 1)
-        user_analytics.log_event(
-            user["username"],
-            "generate_article",
-            {"article_id": result.get("id") if isinstance(result, dict) else None},
-        )
-        return result
-    if req.action == "quality_check":
-        return quality_gate.run_quality_check(article_id=req.params.get("article_id"))
-    if req.action == "publish_wechat_draft":
-        import wechat_publisher
-
-        return wechat_publisher.publish_article_to_draft(
-            req.params.get("article_id") or ""
-        )
-    if req.action == "full_pipeline":
-        # 选题→生成→质检→向量（generate_article 已入库向量）
-        from main import run_full_pipeline
-
-        topic = req.params.get("topic") or None
-        result = run_full_pipeline(
-            topic=topic,
-            summary=req.params.get("summary", ""),
-            tags=req.params.get("tags"),
-            priority=int(req.params.get("priority", 5)),
-        )
-        if isinstance(result, dict) and result.get("article_id"):
-            auth_users.bump_usage(user["username"], "articles_generated", 1)
-        return result or {"ok": False, "error": "流水线无产出"}
-    if req.action == "analysis_topic_data":
-        return data_feedback.analyze_topic_data_with_nl2sql()
-    if req.action == "sync_knowledge_to_bid":
-        return bid_pipeline_link.sync_knowledge_to_bid()
-    if req.action == "fetch_bid_project_themes":
-        return bid_pipeline_link.fetch_bid_project_themes()
-    if req.action == "export_all":
-        return pdf_exporter.export_all()
-    if req.action == "export_article_pdf":
-        return {"file": pdf_exporter.export_article_by_id(req.params.get("article_id"))}
-    if req.action == "export_article_docx":
-        path = docx_exporter.export_article_by_id(req.params.get("article_id"))
-        return {
-            "ok": True,
-            "docx": path,
-            "download": f"/api/article/{req.params.get('article_id')}/docx",
-        }
-    raise HTTPException(400, f"未知 action: {req.action}")
+        _safe_http_error(500, f"执行失败（{action}），请稍后重试")
 
 
 class Nl2sqlReq(BaseModel):
@@ -1328,6 +1537,13 @@ def start():
     host = cfg.get("web_host", "127.0.0.1")
     port = int(cfg.get("web_port", 8090))
     op_logger.log("web_server", f"成军台启动: http://{host}:{port}")
+    # 启动时自动修复卡在 planning 超过 120 秒的战役
+    try:
+        r = camp_runner.reset_stuck_planning(cid=None, max_age_sec=120)
+        if r.get("fixed"):
+            op_logger.log("web_server", f"启动时自动修复 {len(r['fixed'])} 个卡死 planning 战役: {r['fixed']}")
+    except Exception as ex:
+        op_logger.log("web_server", f"启动修复 planning 失败: {type(ex).__name__}: {ex}", level="WARN")
     uvicorn.run(app, host=host, port=port, log_level="warning")
 
 

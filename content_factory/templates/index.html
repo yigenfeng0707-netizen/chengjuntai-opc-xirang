@@ -301,6 +301,8 @@ document.querySelectorAll('.nav').forEach(a=>a.onclick=()=>nav(a.dataset.v));
 async function nav(v){
   document.querySelectorAll('.nav').forEach(a=>a.classList.toggle('active',a.dataset.v===v));
   const seq=++_viewSeq;
+  // 切换视图时取消战役轮询，避免无效请求
+  if(v!=='home'){stopCampPoll();}
   const fn={home:vHome,campaigns:vList,metrics:vMetrics,factory:vFactory,logs:vLogs,users:vUsers,insights:vInsights,artifacts:vArtifacts,nl2sql:vNl2sql,bid:vBid}[v];
   if(!fn){setHTML('content',card('<p class="muted">预赛范围外 / 敬请期待</p>','功能未开放'));return;}
   try{await fn(seq);}catch(e){if(seq!==_viewSeq)return;setHTML('content',card('<p class="status-err">'+esc(e.message)+'</p>','加载失败'));}
@@ -477,12 +479,19 @@ async function startCamp(){
   }
 }
 async function openCamp(id){CURRENT=id; await showCamp(id);}
+let _campPollTimer=null;
+function stopCampPoll(){
+  if(_campPollTimer){clearTimeout(_campPollTimer);_campPollTimer=null;}
+}
 async function showCamp(id){
   const c=await api('/api/campaign/'+id);
   if(!$('campPanel')){
     await nav('home');
     if(!$('campPanel')){alert('无法打开战役看板');return;}
   }
+  // 切换战役时取消旧的轮询
+  if(CURRENT!==id){stopCampPoll();}
+  CURRENT=id;
   const by={pending:[],running:[],done:[],failed:[]};
   (c.tasks||[]).forEach(t=>{const s=t.status||'pending';(by[s]=by[s]||[]).push(t);});
   const col=(title,arr)=>'<div class="col-board"><h3>'+title+' ('+arr.length+')</h3>'+(arr.map(t=>'<div class="task"><div class="role">'+esc(t.role)+'</div><div>'+esc(t.title)+'</div>'+(t.error?'<div class="status-err">'+esc(t.error)+'</div>':'')+(t.result_artifact_id?'<button class="btn sm" style="margin-top:6px" onclick="viewArt(\''+id+'\',\''+t.result_artifact_id+'\')">打开产物</button>':'')+'</div>').join('')||'<p class="muted">空</p>')+'</div>';
@@ -523,6 +532,8 @@ async function showCamp(id){
     card('<p><b>'+esc(c.id)+'</b> · <span class="tag">'+esc(c.status)+'</span> · 模型徽章：'+esc(c.llm_provider||'N/A')+'</p>'+
       '<p style="margin:8px 0">'+esc(c.goal)+'</p>'+
       '<p class="muted">'+(c.plan&&c.plan.summary?esc(c.plan.summary):'')+(c.plan&&c.plan.fallback?' · <span class="status-warn">结构 fallback</span>':'')+'</p>'+
+      (c.status==='planning'?'<div class="banner warn" id="campTip">后台正在生成计划…（约 30–60 秒，本页将每 5 秒自动刷新）</div>':'')+
+      (c.status==='running'?'<div class="banner warn" id="campTip">任务执行中…（本页将每 5 秒自动刷新）</div>':'')+
       gateNote+gateBox+
       '<div style="margin:12px 0">'+actions+'</div>'+
       '<div class="kanban">'+col('待执行',by.pending||[])+col('进行中',by.running||[])+col('已完成',by.done||[])+col('失败',by.failed||[])+'</div>','战役看板')+
@@ -536,6 +547,19 @@ async function showCamp(id){
     const last=c.artifacts[c.artifacts.length-1];
     const campId=id;
     previewArtInline(campId, last.id).catch(function(){});
+  }
+  // planning/running 状态自动轮询，用户无需手动刷新
+  if(c.status==='planning'||c.status==='running'){
+    stopCampPoll();
+    const tip=c.status==='planning'?'后台正在生成计划…':'任务执行中…';
+    const tipEl=$('campTip');
+    if(tipEl) tipEl.textContent=tip;
+    _campPollTimer=setTimeout(function(){
+      // 仅当用户还在该战役看板时才刷新
+      if(CURRENT===id){
+        showCamp(id).catch(function(){});
+      }
+    },5000);
   }
 }
 async function syncCampFactory(id){

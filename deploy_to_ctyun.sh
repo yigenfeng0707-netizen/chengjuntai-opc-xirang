@@ -203,6 +203,7 @@ $PIP install -q \
     python-multipart>=0.0.9 \
     feedparser>=6.0 \
     reportlab>=4.0 \
+    python-docx>=1.1 \
     "numpy>=1.26" \
     "scikit-learn>=1.4" \
     pydantic>=2.0 \
@@ -212,7 +213,7 @@ $PIP install -q \
 info "所有 Python 依赖安装完成"
 
 # 验证关键包
-$PYTHON -c "import flask, aiohttp, requests, cachetools, yaml, fastapi, uvicorn, numpy, sklearn, reportlab, psycopg2; print('依赖验证通过')" || \
+$PYTHON -c "import flask, aiohttp, requests, cachetools, yaml, fastapi, uvicorn, numpy, sklearn, reportlab, psycopg2, docx; print('依赖验证通过')" || \
     error "依赖安装验证失败"
 
 # ==================== 4.5 初始化 PostgreSQL ====================
@@ -607,9 +608,14 @@ cat > /etc/nginx/sites-available/teleagent.conf << 'NGINXEOF'
 limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
 
 server {
-    listen 8088;
-    server_name _;
+    listen 80;
+    server_name opcopcos.cn;
     client_max_body_size 50M;
+
+    # Let's Encrypt ACME HTTP-01 验证（HTTPS 启用前需保留）
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
 
     # 安全响应头
     add_header X-Frame-Options "SAMEORIGIN" always;
@@ -752,9 +758,9 @@ cat << SUMMARY
 ╠══════════════════════════════════════════════════════════╣
 ║
 ║  服务地址:
-║    Web 面板:    http://$PUBLIC_IP/
-║    NL2SQL API:  http://$PUBLIC_IP/api/
-║    MCP 服务:    http://$PUBLIC_IP/mcp
+║    Web 面板:    http://opcopcos.cn:8088/
+║    NL2SQL API:  http://opcopcos.cn:8088/api/
+║    MCP 服务:    http://opcopcos.cn:8088/mcp
 ║
 ║  内部端口:
 ║    后端 (Flask):   $PORT_BACKEND
@@ -781,9 +787,11 @@ cat << SUMMARY
 ║  下一步:
 ║    1. LLM: 优先 XIRANG_API_KEY（主办方星辰/息壤）；interim 可用 SenseNova/百炼
 ║       无 Key 也可先公网结构 Demo（看板无 Key 横幅）。详见 docs/CTYUN_TRIAL.md
-║    2. 天翼云控制台 → 安全组 → 放行 TCP 80/443/22
-║    3. 浏览器访问 http://$PUBLIC_IP/ 验证
-║    4. 记录凭据后删除 CREDENTIALS.txt（勿把 Key/密码提交 Git）
+║    2. 天翼云控制台 → 安全组 → 放行 TCP 8088/22（ECS 绑定的是 Default-Security-Group）
+║    3. 浏览器访问 https://opcopcos.cn:8088/ 验证
+║    4. HTTPS 已通过 DNS-01 验证方式申请 Let's Encrypt 证书并配置在 8088 端口
+║       国内 80/443 需 ICP 备案，故复用 8088 端口做 HTTPS
+║    5. 记录凭据后删除 CREDENTIALS.txt（勿把 Key/密码提交 Git）
 ║
 ╚══════════════════════════════════════════════════════════╝
 

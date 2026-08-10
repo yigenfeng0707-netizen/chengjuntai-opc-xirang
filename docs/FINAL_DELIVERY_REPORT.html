@@ -137,7 +137,7 @@ tr:hover td { background: #f8fafc; }
   <div class="subtitle">2026 息壤杯全国人工智能 OPC 创新大赛 | 惠民产品创新 / AI+自选开放场景</div>
   <div class="meta">
     <span>生成时间: 2026-08-06 09:36</span>
-    <span>公网: http://171.111.219.204:8088</span>
+    <span>公网: https://opcopcos.cn:8088</span>
     <span>仓库: github.com/yigenfeng0707-netizen/chengjuntai-opc-xirang</span>
     <span>最新提交: e06c1c7</span>
   </div>
@@ -175,7 +175,7 @@ tr:hover td { background: #f8fafc; }
   <h3>服务架构</h3>
   <div class="code-block">
 <span class="comment"># 公网入口 (天翼云 ECS: ecm-fb95, s6.large.2, CTyunOS V4.0)</span>
-<span class="key">Nginx</span> :8088 (公网) <span class="comment"># 80/443 需ICP备案, 已改8088</span>
+<span class="key">Nginx</span> :443 (HTTPS, opcopcos.cn) <span class="comment"># 80→443 跳转, Let's Encrypt 证书</span>
   <span class="comment">├──</span> <span class="key">location /</span>           -> <span class="str">FastAPI</span> :8090  <span class="comment"># Web 看板 + 评委60秒路径</span>
   <span class="comment">├──</span> <span class="key">location /api/v1/</span>     -> <span class="str">Flask</span>   :8082  <span class="comment"># NL2SQL + 数据查询</span>
   <span class="comment">├──</span> <span class="key">location /mcp</span>          -> <span class="str">aiohttp</span> :8765  <span class="comment"># NL2SQL HTTP MCP</span>
@@ -317,7 +317,7 @@ tr:hover td { background: #f8fafc; }
   <table>
     <tr><th>评分项</th><th>证据</th><th>得分</th><th>权重参考</th></tr>
     <tr><td>产品完成度</td><td>核心功能完整: 多Agent编排 + 战役状态机 + NL2SQL + 内容工厂 + MCP(15工具) + Word/PDF导出; 56个Python文件 / 13563行代码</td><td>8/10</td><td rowspan="4">~20%</td></tr>
-    <tr><td>公网可访问</td><td>http://171.111.219.204:8088 全端点 HTTP 200, 5个systemd服务 active, PG 312条真实数据</td><td>9/10</td></tr>
+    <tr><td>公网可访问</td><td>https://opcopcos.cn:8088 全端点 HTTP 200, 5个systemd服务 active, PG 312条真实数据</td><td>9/10</td></tr>
     <tr><td>评委可体验</td><td>"评委60秒体验"零讲解路径: 首页->登录->样例战役->产物预览->导出Word->智能问数</td><td>8/10</td></tr>
     <tr><td>真实数据支撑</td><td>312条浙江政采网真实标讯; NL2SQL 真实查询; LLM 真实调用 (息壤+壁韧双轨)</td><td>8/10</td></tr>
   </table>
@@ -427,7 +427,7 @@ tr:hover td { background: #f8fafc; }
 
 <div class="footer">
   <p>成军台 - 息壤育智, 一人成军 | 生成于 2026-08-06 09:36 | commit e06c1c7</p>
-  <p>公网 Demo: http://171.111.219.204:8088 | 仓库: github.com/yigenfeng0707-netizen/chengjuntai-opc-xirang</p>
+  <p>公网 Demo: https://opcopcos.cn:8088 | 仓库: github.com/yigenfeng0707-netizen/chengjuntai-opc-xirang</p>
 </div>
 
 </div>

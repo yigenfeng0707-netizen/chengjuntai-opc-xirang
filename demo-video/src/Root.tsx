@@ -1006,7 +1006,7 @@ const ShotDeploy: React.FC<{ shot: Shot }> = ({ shot }) => {
     { name: "PostgreSQL", port: "5432", status: "running" },
   ];
 
-  const urlText = "http://171.111.219.204:8088";
+  const urlText = "https://opcopcos.cn:8088";
   const typedChars = Math.floor(interpolate(frame, [20, 60], [0, urlText.length], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }));
   const cursorVisible = Math.floor(frame / 15) % 2 === 0;
 
@@ -1247,7 +1247,7 @@ const ShotCTA: React.FC<{ shot: Shot }> = ({ shot }) => {
       }}>
         <div style={{ marginBottom: 16 }}>
           <span style={{ color: COLORS.accent, fontSize: 28, fontFamily: "'Courier New', monospace" }}>
-            http://171.111.219.204:8088
+            https://opcopcos.cn:8088
           </span>
         </div>
         <div>
