@@ -856,5 +856,36 @@
     },
     "created_at": "2026-07-31T08:13:06.826679",
     "campaign_id": "CMP20260731081012"
+  },
+  {
+    "id": "ART20260811064115",
+    "title": "MCP协议实战：5分钟搭建智能体工具集成",
+    "file": "ART20260811064115_MCP协议实战：5分钟搭建智能体工具集成.md",
+    "tags": [
+      "MCP",
+      "智能体"
+    ],
+    "summary": "传统模式下，每接入一个外部API（如天气查询、数据库操作、CRM系统），开发者都需要为该API编写独立的适配层——包括鉴权逻辑、参数映射、错误重试、超时处理等；根据项目实践，传统方式接入一个工具平均需要约200行适配代码，而MCP方式仅需约30行配置与调用代码（示例数据，非基准测试结果），集成成本降低一个数量级；**实战意义**：新增工具不再需要修改智能体核心代码，仅需在Server端注册新的工具函数，智能体在下一次拉取工具列表时即可感知",
+    "review_pass": true,
+    "review": {
+      "pass": true,
+      "issues": [],
+      "suggestions": "文稿内容完整，未发现违规项。所有涉及业绩数字的表述均标注了'示例'或'示例数据'，无未标注的绝对业绩数字；未发现占位符残留；代码示例为完整可运行的Python代码片段；内容逻辑一致，无自相矛盾之处。"
+    },
+    "real_data_used": false,
+    "tokens_used": 8013,
+    "token_usage_snapshot": {
+      "total_tokens": 8556,
+      "prompt_tokens": 4658,
+      "completion_tokens": 3898,
+      "last": {
+        "prompt_tokens": 2288,
+        "completion_tokens": 88,
+        "total_tokens": 2376,
+        "model": "deepseek-v4-flash",
+        "name": "interim-壁韧算力"
+      }
+    },
+    "created_at": "2026-08-11T06:41:15.542047"
   }
 ]

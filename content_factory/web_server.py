@@ -1267,7 +1267,8 @@ def run(req: RunReq, user=Depends(_token_user)):
             level="ERROR",
             user=user.get("username"),
         )
-        _safe_http_error(500, f"执行失败（{action}），请稍后重试")
+        # 透传异常类型和消息（截断防泄露完整堆栈），便于前端诊断真实原因
+        _safe_http_error(500, f"执行失败（{action}）: {type(ex).__name__}: {ex}")
 
 
 class Nl2sqlReq(BaseModel):

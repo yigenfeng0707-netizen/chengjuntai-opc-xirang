@@ -17,34 +17,102 @@ from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from reportlab.lib.enums import TA_LEFT
 from config_loader import ARTICLES_DIR, EXPORT_PDF_DIR
 import op_logger
 
-# 注册中文字体（使用 Windows 自带微软雅黑）
+# 中文字体名（运行时可能被 _ensure_font() 改写为 CID 回退名）
 _FONT_NAME = "MSYH"
 _FONT_REGISTERED = False
 
+# Windows 候选 (regular, bold)
+_WIN_CANDIDATES = [
+    (r"C:\Windows\Fonts\msyh.ttc", r"C:\Windows\Fonts\msyhbd.ttc"),
+    (r"C:\Windows\Fonts\msyh.ttf", r"C:\Windows\Fonts\msyhbd.ttf"),
+    (r"C:\Windows\Fonts\simhei.ttf", r"C:\Windows\Fonts\simhei.ttf"),
+    (r"C:\Windows\Fonts\simsun.ttc", r"C:\Windows\Fonts\simsun.ttc"),
+]
 
-def _ensure_font():
-    global _FONT_REGISTERED
+# Linux 候选 (regular, bold) —— 覆盖 Noto CJK / WenQuanYi / 用户上传字体
+_LINUX_CANDIDATES = [
+    ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+     "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"),
+    ("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+     "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc"),
+    ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+     "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"),
+    ("/usr/share/fonts/wqy-zenhei/wqy-zenhei.ttc",
+     "/usr/share/fonts/wqy-zenhei/wqy-zenhei.ttc"),
+    (os.path.expanduser("~/.fonts/msyh.ttc"),
+     os.path.expanduser("~/.fonts/msyhbd.ttc")),
+    (os.path.expanduser("~/.fonts/msyh.ttf"),
+     os.path.expanduser("~/.fonts/msyhbd.ttf")),
+]
+
+
+def _register_family(regular_path: str, bold_path: str, family_name: str) -> str:
+    """注册单个字体族（regular + bold），并建立 family/bold/italic 映射。
+    成功返回字体族名，供 _ensure_font 设置 _FONT_NAME。
+    修复关键：必须 registerFontFamily，否则 <b>/<i> 标签会触发
+    'Can't map determine family/bold/italic' 异常。"""
+    reg_kwargs = {"subfontIndex": 0} if regular_path.lower().endswith(".ttc") else {}
+    pdfmetrics.registerFont(TTFont(family_name, regular_path, **reg_kwargs))
+
+    bold_name = family_name + "-Bold"
+    if os.path.exists(bold_path) and os.path.abspath(bold_path) != os.path.abspath(regular_path):
+        bold_kwargs = {"subfontIndex": 0} if bold_path.lower().endswith(".ttc") else {}
+        pdfmetrics.registerFont(TTFont(bold_name, bold_path, **bold_kwargs))
+    else:
+        # 没有独立粗体文件，用 regular 顶替，避免 <b> 标签时找不到字体
+        bold_name = family_name
+
+    # 注册字体族：italic/boldItalic 无真正斜体文件，统一映射到 regular/bold
+    # registerFontFamily 内部已建立 bold/italic 映射，无需额外 addMapping
+    pdfmetrics.registerFontFamily(
+        family_name,
+        normal=family_name,
+        bold=bold_name,
+        italic=family_name,
+        boldItalic=bold_name,
+    )
+    return family_name
+
+
+def _ensure_font() -> str:
+    """注册中文字体并返回当前生效的字体名。
+    依次尝试 Windows 雅黑/黑体 → Linux Noto/WQY → reportlab 内置 CID 字体 STSong-Light。
+    修复关键：必须 registerFontFamily + addMapping，否则 <b>/<i> 标签会触发
+    'Can't map determine family/bold/italic' 异常。"""
+    global _FONT_REGISTERED, _FONT_NAME
     if _FONT_REGISTERED:
-        return
-    candidates = [
-        r"C:\Windows\Fonts\msyh.ttc",
-        r"C:\Windows\Fonts\msyh.ttf",
-        r"C:\Windows\Fonts\simhei.ttf",
-        r"C:\Windows\Fonts\simsun.ttc",
-    ]
-    for fp in candidates:
-        if os.path.exists(fp):
-            try:
-                pdfmetrics.registerFont(TTFont(_FONT_NAME, fp))
-                _FONT_REGISTERED = True
-                return
-            except Exception:
-                continue
-    _FONT_REGISTERED = True  # 字体注册失败也置位，避免反复尝试
+        return _FONT_NAME
+
+    candidates = _WIN_CANDIDATES + _LINUX_CANDIDATES
+    for regular_path, bold_path in candidates:
+        if not os.path.exists(regular_path):
+            continue
+        try:
+            _FONT_NAME = _register_family(regular_path, bold_path, "MSYH")
+            _FONT_REGISTERED = True
+            op_logger.log("pdf_export", f"字体注册成功: {regular_path}")
+            return _FONT_NAME
+        except Exception as ex:
+            op_logger.log("pdf_export", f"字体注册失败 {regular_path}: {ex}", level="WARN")
+            continue
+
+    # 最终回退：reportlab 内置 CID 中文字体（无需外部字体文件）
+    try:
+        pdfmetrics.registerFont(UnicodeCIDFont("STSong-Light"))
+        _FONT_NAME = "STSong-Light"
+        _FONT_REGISTERED = True
+        op_logger.log("pdf_export", "回退使用内置 CID 字体 STSong-Light（中文可正常显示，但无粗体变体）", level="WARN")
+        return _FONT_NAME
+    except Exception as ex:
+        op_logger.log("pdf_export", f"CID 字体回退也失败: {ex}", level="ERROR")
+
+    _FONT_REGISTERED = True  # 避免反复尝试，但此时 PDF 导出大概率会失败
+    return _FONT_NAME
 
 
 def _md_to_flow(md_text: str, styles):

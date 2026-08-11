@@ -103,6 +103,9 @@ if [ "$IS_UBUNTU" = true ]; then
     }
     # 确保 PostgreSQL 也安装（PPA 添加后重试）
     apt-get install -y -qq postgresql postgresql-contrib libpq-dev 2>/dev/null || true
+    # 中文字体（PDF 导出需要，pdf_exporter.py 的 Linux 候选路径依赖此包）
+    apt-get install -y -qq fonts-noto-cjk 2>/dev/null || warn "fonts-noto-cjk 安装失败，PDF 中文将回退到内置 CID 字体"
+    fc-cache -f 2>/dev/null || true
     PYTHON_BIN="python3.12"
 elif [ "$IS_CENTOS" = true ]; then
     # CentOS 7/8/9
@@ -115,6 +118,9 @@ elif [ "$IS_CENTOS" = true ]; then
     $PKG_MGR install -y -q curl wget git nginx gcc make \
         python3 python3-devel python3-pip redhat-rpm-config libffi-devel openssl-devel \
         postgresql-server postgresql-contrib postgresql-devel libpq-devel 2>/dev/null
+    # 中文字体（PDF 导出需要，pdf_exporter.py 的 Linux 候选路径依赖此包）
+    $PKG_MGR install -y -q google-noto-sans-cjk-fonts 2>/dev/null || warn "Noto CJK 字体安装失败，PDF 中文将回退到内置 CID 字体"
+    fc-cache -f 2>/dev/null || true
     # CentOS 默认 Python 3.6/3.9，尝试安装 3.12
     if $PKG_MGR module list python3.12 &>/dev/null 2>&1; then
         $PKG_MGR module enable -y python3.12

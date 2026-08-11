@@ -798,21 +798,25 @@ def export_weekly_report(cid: str) -> str:
     os.makedirs(EXPORT_PDF_DIR, exist_ok=True)
     pdf_path = os.path.join(EXPORT_PDF_DIR, f"{cid}_weekly_report.pdf")
     try:
-        from pdf_exporter import _ensure_font, _md_to_flow, _FONT_NAME
+        from pdf_exporter import _ensure_font, _md_to_flow
         from reportlab.lib.pagesizes import A4
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.styles import ParagraphStyle
         from reportlab.platypus import SimpleDocTemplate
         from reportlab.lib.enums import TA_LEFT
         from reportlab.lib.units import mm
 
-        _ensure_font()
-        styles = getSampleStyleSheet()
-        styles.add(ParagraphStyle(name="H1", fontName=_FONT_NAME, fontSize=16, leading=22, spaceAfter=8))
-        styles.add(ParagraphStyle(name="H2", fontName=_FONT_NAME, fontSize=13, leading=18, spaceAfter=6))
-        styles.add(ParagraphStyle(name="H3", fontName=_FONT_NAME, fontSize=11, leading=16, spaceAfter=4))
-        styles.add(ParagraphStyle(name="Body", fontName=_FONT_NAME, fontSize=10, leading=14, alignment=TA_LEFT))
-        styles.add(ParagraphStyle(name="Bullet", fontName=_FONT_NAME, fontSize=10, leading=14, leftIndent=12))
-        styles.add(ParagraphStyle(name="Quote", fontName=_FONT_NAME, fontSize=9, leading=13, textColor="#555555"))
+        # _ensure_font() 返回实际生效的字体名（可能回退为 STSong-Light），
+        # 不能用 import 的 _FONT_NAME（值绑定，拿不到回退后的新名）
+        font_name = _ensure_font()
+        # 用自定义样式字典而非 getSampleStyleSheet().add()，避免与默认 H1/H2/H3 重名冲突
+        styles = {
+            "H1": ParagraphStyle("H1", fontName=font_name, fontSize=16, leading=22, spaceAfter=8),
+            "H2": ParagraphStyle("H2", fontName=font_name, fontSize=13, leading=18, spaceAfter=6),
+            "H3": ParagraphStyle("H3", fontName=font_name, fontSize=11, leading=16, spaceAfter=4),
+            "Body": ParagraphStyle("Body", fontName=font_name, fontSize=10, leading=14, alignment=TA_LEFT),
+            "Bullet": ParagraphStyle("Bullet", fontName=font_name, fontSize=10, leading=14, leftIndent=12),
+            "Quote": ParagraphStyle("Quote", fontName=font_name, fontSize=9, leading=13, textColor="#555555"),
+        }
         doc = SimpleDocTemplate(pdf_path, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=18 * mm, bottomMargin=18 * mm)
         doc.build(_md_to_flow(md, styles))
         op_logger.log("campaign_runner", f"周报 PDF: {pdf_path}")
