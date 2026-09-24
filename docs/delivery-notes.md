@@ -10,8 +10,9 @@
 
 | 项 | 本地路径 | 规格 |
 |----|----------|------|
-| 演示视频 | `demo-output/Chengjuntai_demo_cinematic_60s.mp4`（及 `_submit` 同内容） | **59.5s** · ~8MB · 1080p30 · 硬烧字幕 |
-| 答辩 PPT | `docs/成军台_息壤杯预赛答辩.pptx` | 13 页 · 图文并茂 · ~1.5MB · pptx |
+| 演示视频（提交版） | `demo-video/out/demo-video-60s.mp4` | **58.97s** · 5.74 MiB · 1920×1080 h264+aac · 硬烧字幕 |
+| 演示视频（母版，仅本地） | `demo-video/out/demo-video.mp4` | 71.02s · 8.50 MiB · 13 分镜（`demo-video/public/shots.json`） |
+| 答辩 PPT | `docs/成军台_息壤杯预赛答辩.pptx` | 15 页 · 图文并茂 · 1,718,207 B（≈1.64 MiB，实测 2026-09-24）· pptx |
 
 ## 视频重跑
 
@@ -55,7 +56,7 @@ python scripts\build_contest_pptx.py
 
 ```powershell
 ffprobe -v error -show_entries format=duration,size -show_entries stream=codec_name,width,height,r_frame_rate `
-  -of default=noprint_wrappers=1 demo-output\Chengjuntai_demo_cinematic_60s.mp4
+  -of default=noprint_wrappers=1 demo-video\out\demo-video-60s.mp4
 ```
 
 期望：时长 ≤60s，1920×1080，h264+aac，文件 ≤100MB。

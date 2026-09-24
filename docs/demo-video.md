@@ -6,7 +6,7 @@
 
 | 文件 | 说明 |
 |------|------|
-| `demo-output/Chengjuntai_demo_cinematic_60s.mp4` | 提交用成片（1080p30 · CRF17 · 硬烧字幕） |
+| `demo-video/out/demo-video-60s.mp4` | 提交用成片（1080p30 · CRF17 · 硬烧字幕 · 58.97s） |
 | `demo.storyboard.json` | 分镜（可复跑） |
 
 ## 重跑

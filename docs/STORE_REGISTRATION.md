@@ -16,8 +16,8 @@
 - 技术栈：Python / FastAPI / 多 Agent / NL2SQL MCP / 天翼云 / 星辰 TokenHub
 - Demo 地址：（天翼云部署后填写公网 URL；本地仅为开发）http://127.0.0.1:8090
 - 代码仓库：https://github.com/yigenfeng0707-netizen/chengjuntai-opc-xirang
-- 演示视频：本地成片 `demo-output/Chengjuntai_demo_cinematic_60s.mp4`（及 `_submit` 同内容；≤60s）
-- PPT / 项目文档：`docs/成军台_息壤杯预赛答辩.pptx`（12 页）；说明见 `PPT_OUTLINE.md` / `PROJECT_DOC.md` / `delivery-notes.md`
+- 演示视频：本地成片 `demo-video/out/demo-video-60s.mp4`（58.97s，≤60s 合规；母版 `demo-video/out/demo-video.mp4` 71.02s 不外发）
+- PPT / 项目文档：`docs/成军台_息壤杯预赛答辩.pptx`（15 页）；说明见 `PPT_OUTLINE.md` / `PROJECT_DOC.md` / `delivery-notes.md`
 - 创新性关键词：一人成军、目标驱动、人审卡点、息壤原生
 - 社会价值：降低个体经营数字化门槛
 - 商业模式：订阅 + Token 用量 + 模板战役包
