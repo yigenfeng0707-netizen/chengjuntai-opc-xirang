@@ -234,8 +234,7 @@ def build() -> str:
     for label, rel in TARGETS:
         p = ROOT / rel
         if not p.exists():
-            rows.append((label, rel, "缺失", "", ""))
-            continue
+            raise SystemExit("交付物缺失：%s —— 先确认磁盘状态，不要生成半份清单" % rel)
         size = "%.2f MiB" % (p.stat().st_size / 1048576)
         if rel.endswith(".mp4"):
             spec = probe_video(p) + (
@@ -257,7 +256,7 @@ def build() -> str:
     lines += ["| %s | `%s` | %s | %s | `%s` |" % r for r in rows]
     lines += [
         "", "## 说明", "",
-        "- `demo-video/out/*.mp4` 被 `.gitignore` 排除，**仅存本地 + GitHub Release 归档**（见 `docs/OUTCOME.md`）。",
+        "- 入库状态（2026-09-24 用 git ls-files 实测）：提交版视频与答辩 PPT **已在 HEAD 中并被公开仓库收录** —— `.gitignore` 对已跟踪文件无效；只有母版 `demo-video/out/demo-video.mp4` 未跟踪、仅存本地。",
         "- 提交版 = 59s 合规剪辑；母版 = 完整 13 分镜，含更多讲解，不用于官方提交。",
         "",
     ]
@@ -335,7 +334,7 @@ git commit -m "feat: 交付物指纹清单生成器（ffprobe+pptx页数+sha256�
 - Consumes: Task 2 的 `docs/DELIVERABLES.md`（作为 Release 说明正文的一部分 + 校验基准）
 - Produces: 永久下载 URL `https://github.com/yigenfeng0707-netizen/chengjuntai-opc-xirang/releases/tag/v1.0.0-submit-2026-08`，供 Task 4 台账记录
 
-**为什么打成 zip 而不是直传两个 mp4：** 单包便于校验与二次分发，且把 15 页 PPT（已在库内，但 zip 里留一份带时间点的完整快照）与视频、指纹清单绑定在同一不可变 tag 上。仓库是 public —— Release 资产对外可下载，这一点必须先向用户点明确认。
+**这一步的真实价值（2026-09-24 执行期据实测修正）：** 原判断「交付物只存本地」**只对母版成立** —— 提交版视频（blob `dcd977f6`，5.74 MiB，自 `69f448a` 起被 git 跟踪）与答辩 PPT 早已随 public 仓在 GitHub 上，防丢失价值主要由 git 历史承担。因此本任务的价值重新定位为：把三件交付物 + 指纹清单钉在**一个不可变 tag** 上（便于日后向主办方复现同一提交点），并顺带让唯一非持久的 8.5 MiB 母版获得异地副本。若用户不希望母版公开，Step 6 的私有替代即可满足全部需求，本任务不阻塞 Task 4。
 
 - [ ] **Step 1: 向用户确认后再继续（不可跳过）**
 
