@@ -2,6 +2,7 @@
 import os
 import sys
 import json
+import time
 
 CF = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "content_factory")
 sys.path.insert(0, CF)
@@ -35,9 +36,14 @@ def test_campaign_state_machine():
     c = runner.start_campaign("测试目标", allow_mock=True)
     assert c["status"] == "planned"
     c = runner.approve_gate(c["id"])
-    c = store.get_campaign(c["id"])
-    assert c["status"] in ("awaiting_review", "completed", "failed")
-    if c["status"] in ("awaiting_review", "completed"):
+    # approve_gate 从 planned 起走后台线程执行任务，running 是合法中间态
+    deadline = time.time() + 60
+    status = c["status"]
+    while status in ("planning", "planned", "running") and time.time() < deadline:
+        time.sleep(1)
+        status = store.get_campaign(c["id"])["status"]
+    assert status in ("awaiting_review", "completed", "partial_success", "failed"), status
+    if status in ("awaiting_review", "completed"):
         path = runner.export_weekly_report(c["id"])
         assert path
 
