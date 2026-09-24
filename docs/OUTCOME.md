@@ -27,6 +27,7 @@
 | 3 个 systemd 服务 | `teleagent-backend` / `teleagent-mcp` / `teleagent-web` | 停服即断公网 Demo；不再需要时按 `DEPLOY天翼云.md` §9 下线并释放 |
 | LLM 主链路 Token | 息壤/星辰为正式口径，级联含壁韧/SenseNova 兜底 | 试用 Token 到期日待核实 |
 | 本地密钥 | `content_factory/config.yaml`（含 api_token / web 口令），已 gitignore，9/7 有改动 | 不外发；轮换见 `docs/SECURITY_KEY_ROTATION.md` |
+| 公开仓内的明文口令 | `docs/LOCAL_DEMO.md:32-33` 以明文写出演示账号 `admin` / `judge` 的口令；仓库 public，历史提交同样留痕 | **未处置（用户动作）**：先服务器上轮换 `users.json` 里这两个口令 → 再清理该文档。只改文档不轮换＝无效 |
 
 ## 3. 归档与恢复
 
@@ -34,7 +35,7 @@
   1. 提交版视频（blob `dcd977f6`，6,019,286 B）与答辩 PPT 自 `69f448a`（2026-08-10）起就被 git 跟踪，已随 public 仓存在于 GitHub —— 防丢失价值由 git 历史承担；
   2. 母版 `demo-video/out/demo-video.mp4`（71.02s / 13 分镜）理论上可重建，但**不是零成本**：分镜脚本与画面代码在仓内（`demo-video/src/Root.tsx` + `demo-video/public/shots.json`），而 `docs/delivery-notes.md`「视频重跑」调用的合成脚本在**仓库之外**（用户主目录下的 demo-video-factory 技能），且需要一次能正常跑的演示来录制。所以母版丢了能重建，但重建工具不在版本控制里。
   3. 本机 C: 与 D: 同在 **Disk 0**（一块物理盘），同机任何「另存一份」副本都不构成异地备份，只会制造伪安全感。
-- 仍欠的动作（本台账唯一开放的收尾项）：本机只有 Disk 0 一块物理盘，母版视频与 `content_factory/config.yaml`（含密钥）都是**单副本**。要做真异地副本，外接盘 / 网盘 / 私有仓任选其一，落地后用 `certutil -hashfile <文件> SHA256` 与 `docs/DELIVERABLES.md` 的 sha256(12) 前缀比对。同机换目录不算备份。
+- 仍欠的归档动作（备份侧收尾项；安全侧另有 §2 明文口令一项）：本机只有 Disk 0 一块物理盘，母版视频与 `content_factory/config.yaml`（含密钥）都是**单副本**。要做真异地副本，外接盘 / 网盘 / 私有仓任选其一，落地后用 `certutil -hashfile <文件> SHA256` 与 `docs/DELIVERABLES.md` 的 sha256(12) 前缀比对。同机换目录不算备份。
 - 冻结点：`5915737`（2026-08-11 08:40 +0800，即预赛最后一次代码提交）
 - 重跑视频 / PPT：`docs/delivery-notes.md`「视频重跑」「PPT 重生成」两节
 - 官方提交规格复核：视频 ≤60s、1920×1080、h264+aac、≤100MB —— 提交版 4 项全合规
