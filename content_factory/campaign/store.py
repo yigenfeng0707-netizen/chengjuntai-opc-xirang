@@ -297,7 +297,8 @@ def save_artifact(cid: str, role: str, title: str, content: str, kind: str = "ma
         meta.update(extra)
     arts = list(camp.get("artifacts", []))
     arts.append(meta)
-    update_campaign(cid, artifacts=arts)
+    if update_campaign(cid, artifacts=arts) is None:
+        raise OSError(f"产物登记未能落盘：{cid}/{art_id}")
     bump_metric("artifacts_count", 1)
     return meta
 

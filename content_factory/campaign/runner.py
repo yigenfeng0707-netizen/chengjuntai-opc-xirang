@@ -362,11 +362,14 @@ def approve_gate(cid: str, note: str = "") -> dict:
 
 
 def reject_gate(cid: str, note: str = "") -> dict:
-    return store.update_campaign(
+    camp = store.update_campaign(
         cid,
         status="rejected",
         gate={"required": True, "approved": False, "note": note or "已驳回"},
     )
+    if camp is None:
+        raise RuntimeError(f"驳回结果未能落盘：{cid}")
+    return camp
 
 
 def _deps_done(task: dict, tasks: list) -> bool:

@@ -56,15 +56,18 @@ def test_store_atomic_write():
 
     camp = store.create_campaign("原子写测试", template="lead_gen")
     with mock.patch.object(store, "_dump_atomic", side_effect=OSError("模拟磁盘占用")):
-        assert store.update_campaign(camp["id"], status="running") is None
+        got = store.update_campaign(camp["id"], status="running")
+        assert got is None, f"写盘失败时 update_campaign 必须返回 None，实际 {got!r}"
         try:
             store.create_campaign("不应创建成功", template="lead_gen")
             raise AssertionError("create_campaign 写盘失败时应抛 OSError")
         except OSError as ex:
             assert "无法创建" in str(ex), ex
-    assert store.get_campaign(camp["id"])["status"] == "draft"  # 未落盘的更新不能生效
+    after = store.get_campaign(camp["id"])
+    assert after is not None, "失败写不应让战役文件消失"
+    assert after["status"] == "draft", f"未落盘的更新不能生效，实际状态 {after['status']}"  # 未落盘的更新不能生效
     leftovers = [n for n in os.listdir(store.CAMPAIGNS_DIR) if n.endswith(".tmp")]
-    assert leftovers == [], leftovers
+    assert leftovers == [], f"mock 失败路径留下临时文件：{leftovers}"
 
     payload = "x" * 50000
     corrupt = []
@@ -85,6 +88,25 @@ def test_store_atomic_write():
     t.join()
     assert not corrupt, corrupt
     assert len(reads) >= 5, f"读者与写者没有真正并发，测不到原子性：{len(reads)} 次读"
+    leftovers = [n for n in os.listdir(store.CAMPAIGNS_DIR) if n.endswith(".tmp")]
+    assert leftovers == [], f"真实写入后残留临时文件：{leftovers}"
+
+    # 产物登记与驳回同样是"写失败不能当成功"：一个抛错，一个不得把 null 交给前端
+    with mock.patch.object(store, "_dump_atomic", side_effect=OSError("模拟磁盘占用")):
+        before = store._load_metrics().get("artifacts_count", 0)
+        try:
+            store.save_artifact(camp["id"], "ops", "标题", "正文")
+            raise AssertionError("save_artifact 登记写盘失败时应抛 OSError")
+        except OSError as ex:
+            assert "未能落盘" in str(ex), ex
+        assert store._load_metrics().get("artifacts_count") == before, "登记失败不得计数"
+    from campaign import runner
+    with mock.patch.object(runner.store, "update_campaign", return_value=None):
+        try:
+            runner.reject_gate(camp["id"], note="测试")
+            raise AssertionError("reject_gate 写盘失败时应抛 RuntimeError")
+        except RuntimeError as ex:
+            assert "未能落盘" in str(ex), ex
 
 
 def test_campaign_state_machine():
