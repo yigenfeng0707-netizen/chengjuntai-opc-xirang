@@ -72,9 +72,9 @@
 
 ```bash
 cd /d/APPs/天翼息壤杯/chengjuntai
-grep -rn 'demo-output' --include='*.md' --include='*.html' docs | grep -v 'docs/archive/' | wc -l
+grep -rn 'demo-output' --include='*.md' --include='*.html' docs | grep -v 'docs/archive/' | grep -v 'docs/superpowers/' | wc -l
 ```
-Expected: `5`
+Expected: `5`（执行期修正：本方案自己的正文也提到该 phantom 路径，必须一并排除 `docs/superpowers/`，否则计数虚高）
 
 - [ ] **Step 2: 改 `docs/delivery-notes.md` 必交两项表（第 13-14 行）**
 
@@ -83,7 +83,10 @@ Expected: `5`
 ```markdown
 | 演示视频（提交版） | `demo-video/out/demo-video-60s.mp4` | **58.97s** · 5.74 MiB · 1920×1080 h264+aac · 硬烧字幕 |
 | 演示视频（母版，仅本地） | `demo-video/out/demo-video.mp4` | 71.02s · 8.50 MiB · 13 分镜（`demo-video/public/shots.json`） |
+| 答辩 PPT | `docs/成军台_息壤杯预赛答辩.pptx` | 15 页 · 图文并茂 · 1,718,207 B（≈1.64 MiB，实测 2026-09-24）· pptx |
 ```
+
+（执行期修正：原 Task 1 只给了两行替换内容，照抄会**删掉「必交两项」里的答辩 PPT 行** —— 该表仍是两必交项 + 母版共三行。上面已补第三行。）
 
 - [ ] **Step 3: 改 `docs/delivery-notes.md` 验收段（第 57-58 行）的 ffprobe 路径**
 
@@ -125,16 +128,18 @@ ffprobe -v error -show_entries format=duration,size -show_entries stream=codec_n
 `SCORE_REPORT_2026.html` 第 213 行**保持原文不动**，在其 `</tr>` 之后插入一行说明：
 
 ```html
-    <tr><td colspan="3" style="color:#64748b;font-size:.9em">口径说明：本页数字为 2026-08-06 自评快照（56 个 Python 文件 / 13563 行）。截至 2026-09-24 实测为 106 个 .py / 19105 行。</td></tr>
+    <tr><td colspan="3" style="color:#64748b;font-size:.9em">口径说明：本页数字为 2026-08-06 自评快照，其中「56 个 Python 文件 / 13563 行」是当时的统计。此后仓库持续增长，实时规模请现测（<code>find . -name '*.py' -not -path './.git/*' -not -path './*/__pycache__/*' | wc -l</code>），勿引用本页。</td></tr>
 ```
+
+（执行期修正：不写死「106/19105」这类当日即失效的数字 —— Task 2 的脚本一加，当日实测值就已过时，见 ledger Task 1 Ruling。）
 
 若该文件无 `badge-green` 类，先用 `grep -n 'badge-green' docs/FINAL_DELIVERY_REPORT.html | head -3` 确认；不存在则改用文件中已有的通过态类名（`grep -o 'badge-[a-z]*' docs/FINAL_DELIVERY_REPORT.html | sort -u` 取值）。
 
 - [ ] **Step 6: 验证零残留 + 路径真实存在**
 
 ```bash
-grep -rn 'demo-output' --include='*.md' --include='*.html' docs | grep -v 'docs/archive/'
-# 期望：无输出（0 处）
+grep -rn 'demo-output' --include='*.md' --include='*.html' docs | grep -v 'docs/archive/' | grep -v 'docs/superpowers/'
+# 期望：无输出（0 处）。方案正文自身仍含该字符串，属预期，故两个 grep -v 都要保留。
 grep -rn '13 页' docs/delivery-notes.md; echo "exit=$?"
 # 期望：无输出
 for f in demo-video/out/demo-video-60s.mp4 demo-video/out/demo-video.mp4 docs/成军台_息壤杯预赛答辩.pptx; do
