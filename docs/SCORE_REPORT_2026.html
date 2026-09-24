@@ -211,7 +211,7 @@ tr:hover td { background: #f8fafc; }
   <table>
     <tr><th>评分项</th><th>证据</th><th>得分</th></tr>
     <tr><td>产品完成度</td><td>核心功能完整：多Agent编排 + 战役状态机 + NL2SQL + 内容工厂 + MCP(15工具) + Word/PDF导出；56个Python文件 / 13563行代码</td><td>8/10</td></tr>
-    <tr><td colspan="3" style="color:#64748b;font-size:.9em">口径说明：本页数字为 2026-08-06 自评快照（56 个 Python 文件 / 13563 行）。截至 2026-09-24 实测为 106 个 .py / 19105 行。</td></tr>
+    <tr><td colspan="3" style="color:#64748b;font-size:.9em">口径说明：本页数字为 2026-08-06 自评快照，其中「56 个 Python 文件 / 13563 行」是当时的统计。此后仓库持续增长，实时规模请现测（<code>find . -name '*.py' -not -path './.git/*' -not -path './*/__pycache__/*' | wc -l</code>），勿引用本页。</td></tr>
     <tr><td>公网可访问</td><td>https://opcopcos.cn:8088 全端点 HTTP 200，5个systemd服务 active，PG 312条真实数据</td><td>9/10</td></tr>
     <tr><td>评委可体验</td><td>"评委60秒体验"零讲解路径：首页->登录->样例战役->产物预览->导出Word->智能问数</td><td>8/10</td></tr>
     <tr><td>演示视频</td><td>71秒 / 13分镜 Remotion 视频，edge-tts 配音，1920x1080@30fps，已修复空白分镜</td><td>9/10</td></tr>
