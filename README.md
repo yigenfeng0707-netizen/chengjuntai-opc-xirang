@@ -54,6 +54,8 @@ python tests/test_campaign_core.py
 python scripts/run_demo_campaign.py
 ```
 
+两条回归都把 mock 产物写进临时目录（`CHENGJUNTAI_WRITE_ROOT`），不会污染 `content_factory/data/` 与 `articles/` 里的演示种子数据。
+
 ---
 
 ## 架构要点

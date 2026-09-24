@@ -1,10 +1,16 @@
 # -*- coding: utf-8 -*-
+import atexit
 import os
+import shutil
 import sys
 import json
+import tempfile
 import time
 
 CF = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "content_factory")
+WRITE_ROOT = tempfile.mkdtemp(prefix="chengjuntai-regression-")
+os.environ["CHENGJUNTAI_WRITE_ROOT"] = WRITE_ROOT
+atexit.register(shutil.rmtree, WRITE_ROOT, True)
 sys.path.insert(0, CF)
 os.chdir(CF)
 
