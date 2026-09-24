@@ -339,6 +339,8 @@ git commit -m "feat: 交付物指纹清单生成器（ffprobe+pptx页数+sha256�
 - Consumes: Task 2 的 `docs/DELIVERABLES.md`（作为 Release 说明正文的一部分 + 校验基准）
 - Produces: 永久下载 URL `https://github.com/yigenfeng0707-netizen/chengjuntai-opc-xirang/releases/tag/v1.0.0-submit-2026-08`，供 Task 4 台账记录
 
+> **执行期裁决（2026-09-24）：本任务整段跳过。** 用户在看到下列实测事实后选择「不建 GitHub Release」。Steps 1–7 保留为决策记录与将来真要归档时的操作依据。
+
 **这一步的真实价值（2026-09-24 执行期据实测修正）：** 原判断「交付物只存本地」**只对母版成立** —— 提交版视频（blob `dcd977f6`，5.74 MiB，自 `69f448a` 起被 git 跟踪）与答辩 PPT 早已随 public 仓在 GitHub 上，防丢失价值主要由 git 历史承担。因此本任务的价值重新定位为：把三件交付物 + 指纹清单钉在**一个不可变 tag** 上（便于日后向主办方复现同一提交点），并顺带让唯一非持久的 8.5 MiB 母版获得异地副本。若用户不希望母版公开，Step 6 的私有替代即可满足全部需求，本任务不阻塞 Task 4。
 
 - [ ] **Step 1: 向用户确认后再继续（不可跳过）**
@@ -447,7 +449,7 @@ Release 不产生仓库改动。若 Step 4/6 变更了 `docs/OUTCOME.md`（在 T
 | **Store 实际上传** | **待核实** —— 登录 https://ai.js.189.cn/OPCCompetition/OPCOutFiles 查「我的作品」；`docs/SUBMISSION_CHECKLIST.html` 明确记录 Agent 无法代登，故仓库内无回执 | 用户本人 |
 | **8/11 聚能湾答辩结果** | **待核实** —— 仓库内无任何晋级/淘汰记录 | 用户本人 / 赛事通知 |
 | 复赛 / 决赛安排 | **待核实** | 赛事通知 |
-| 归档包 | Release `v1.0.0-submit-2026-08`（见 §3） | Task 3 |
+| 归档方式 | **不另建 Release**（2026-09-24 用户裁决）：三件交付物中两件已在公开仓 git 历史内，第三件可重渲染，且本机仅一块物理盘 | Task 3 |
 
 自评快照（不作为当前结论）：五维 89/A（2026-08-06），最低项为商业模式 7.75。
 
@@ -463,8 +465,12 @@ Release 不产生仓库改动。若 Step 4/6 变更了 `docs/OUTCOME.md`（在 T
 
 ## 3. 归档与恢复
 
-- 归档包：`<Release URL>`（zip，含 2 个 mp4 + 15 页 PPT + `SHA256SUMS.txt` + 指纹清单）
-- 冻结点：`5915737`（2026-08-11 08:40 +0800）
+- 归档结论（2026-09-24）：**不建 GitHub Release**。理由三条，均可复核：
+  1. 提交版视频（blob `dcd977f6`，6,019,286 B）与答辩 PPT 自 `69f448a`（2026-08-10）起就被 git 跟踪，已随 public 仓存在于 GitHub —— 防丢失价值由 git 历史承担；
+  2. 母版 `demo-video/out/demo-video.mp4`（71.02s / 13 分镜）可由仓内 `demo-video/src/Root.tsx` + `demo-video/public/shots.json` 按 `docs/delivery-notes.md`「视频重跑」重渲染，非孤本；
+  3. 本机 C: 与 D: 同在 **Disk 0**（一块物理盘），同机任何「另存一份」副本都不构成异地备份，只会制造伪安全感。
+- 真正的异地副本（如需）：外接盘 / 网盘 / 私有仓，任选其一后用 `python scripts/record_deliverables.py` 之外的 `certutil -hashfile <文件> SHA256` 比对指纹。
+- 冻结点：`5915737`（2026-08-11 08:40 +0800，即预赛最后一次代码提交）
 - 重跑视频 / PPT：`docs/delivery-notes.md`「视频重跑」「PPT 重生成」两节
 - 官方提交规格复核：视频 ≤60s、1920×1080、h264+aac、≤100MB —— 提交版 4 项全合规
 
@@ -497,14 +503,9 @@ PY
 ```
 Expected: `OK 无空单元格`；失效链接列表**不含** `docs/OUTCOME.md` 与 `docs/DELIVERABLES.md`（其余 4 项由 Task 5 处理，此时可能仍在列，属预期）。
 
-- [ ] **Step 4: 把 Release URL 填进台账**
+- [ ] **Step 4: ~~填 Release URL~~（执行期作废）**
 
-```bash
-URL=$(gh release view v1.0.0-submit-2026-08 -R yigenfeng0707-netizen/chengjuntai-opc-xirang --json url -q .url)
-sed -i "s|<Release URL>|$URL|" docs/OUTCOME.md
-grep -n 'github.com' docs/OUTCOME.md
-```
-Expected: 至少 1 行含真实 URL，且不再有 `<Release URL>` 字样。
+Task 3 已被用户裁决为「不建 Release」，台账 §1/§3 直接写明结论，无需回填 URL。本步跳过；Step 3 的验证即为 Task 4 的全部验证。
 
 - [ ] **Step 5: 提交**
 
