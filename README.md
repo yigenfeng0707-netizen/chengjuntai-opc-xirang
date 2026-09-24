@@ -109,6 +109,8 @@ python scripts/smoke_mcp.py
 - [docs/LOCAL_DEMO.md](./docs/LOCAL_DEMO.md) 本地与公网 Demo
 - [docs/STORE_REGISTRATION.md](./docs/STORE_REGISTRATION.md) 智云 Store / 提交口字段
 - [docs/CHECKLIST.md](./docs/CHECKLIST.md) 预赛自检
+- [docs/OUTCOME.md](./docs/OUTCOME.md) 赛事结果 + 云资源到期台账（**先查这份再动手**）
+- [docs/DELIVERABLES.md](./docs/DELIVERABLES.md) 交付物指纹清单（`python scripts/record_deliverables.py` 重生成）
 
 ---
 
