@@ -141,6 +141,7 @@ tr:hover td { background: #f8fafc; }
     <span>仓库: github.com/yigenfeng0707-netizen/chengjuntai-opc-xirang</span>
     <span>最新提交: e06c1c7</span>
   </div>
+  <div class="alert alert-info"><strong>口径说明（2026-09-24 追加）:</strong> 本报告正文是 2026-08-06 09:36 的快照。此后三件事已变化：演示视频已生成（提交版 58.97s / 1920×1080，指纹见 <code>docs/DELIVERABLES.md</code>）；答辩 PPT 定稿 15 页；README 默认口令已脱敏。阅读下文任何「未生成 / 待办」条目时以本说明为前提。</div>
 </div>
 
 <!-- ========== 总览 ========== -->
@@ -160,7 +161,7 @@ tr:hover td { background: #f8fafc; }
     <table>
       <tr><th>维度</th><th>状态</th><th>说明</th></tr>
       <tr><td>产品代码</td><td><span class="badge badge-green">85%</span></td><td>核心功能完整: 多Agent编排 + 战役状态机 + NL2SQL + 内容工厂 + MCP + Word导出</td></tr>
-      <tr><td>参赛材料</td><td><span class="badge badge-yellow">75%</span></td><td>PPT/BP/演讲稿/视频脚本/报名稿齐备; 演示视频未生成</td></tr>
+      <tr><td>参赛材料</td><td><span class="badge badge-yellow">75%</span></td><td>PPT/BP/演讲稿/报名稿齐备; 演示视频已生成（见文首口径说明）</td></tr>
       <tr><td>公网部署</td><td><span class="badge badge-green">100%</span></td><td>ECS 公网可访问, 全端点 HTTP 200, systemd 托管, PG 312条数据</td></tr>
       <tr><td>安全加固</td><td><span class="badge badge-green">90%</span></td><td>10项加固全部完成; HTTPS 未实施(8088端口可接受)</td></tr>
       <tr><td>提交登记</td><td><span class="badge badge-yellow">35%</span></td><td>材料稿齐备; 智云Store提交口未走完(需用户登录)</td></tr>
@@ -352,7 +353,7 @@ tr:hover td { background: #f8fafc; }
     <tr style="font-weight:700;background:#eff6ff;"><td>综合</td><td>-</td><td>100%</td><td>7.85 / 10 = 78.5</td><td><span class="badge badge-blue">B+</span></td></tr>
   </table>
   <div class="alert alert-info">
-    <strong>评分说明:</strong> 权重为估算值 (赛事官方未公开精确权重), 实际得分以评委评定为准。综合自评 78.5 分, 考虑公网部署完整性和安全加固加分, 上调至 <strong>82 分</strong>。主要失分点: 商业模式缺乏付费用户验证、演示视频未生成、智云Store提交未完成。
+    <strong>评分说明:</strong> 权重为估算值 (赛事官方未公开精确权重), 实际得分以评委评定为准。综合自评 78.5 分, 考虑公网部署完整性和安全加固加分, 上调至 <strong>82 分</strong>。主要失分点: 商业模式缺乏付费用户验证、演示视频未生成（该项于当日稍后完成，见文首口径说明）、智云Store提交未完成。
   </div>
 </div>
 
@@ -362,9 +363,9 @@ tr:hover td { background: #f8fafc; }
 
   <h3>用户必须完成 (Agent 无法替代)</h3>
   <ul class="check-list">
-    <li class="check-fail">生成演示视频: 运行 <code>scripts/start_local_demo.bat</code> + <code>scripts/start_nl2sql_demo.bat</code> 后录制60秒路径, 或使用 storyboard 自动合成</li>
+    <li class="check-pass">演示视频已生成: 提交版 58.97s / 1920×1080 / 5.74 MiB（<code>demo-video/out/demo-video-60s.mp4</code>，sha256 见 <code>docs/DELIVERABLES.md</code>）</li>
     <li class="check-warn">智云Store提交登记: 登录 https://ai.js.189.cn/OPCCompetition 提交 Demo URL + 仓库链接 + 视频 + PPT</li>
-    <li class="check-warn">README.md 第18行 judge2026 口令脱敏: 公开仓库中不应出现默认口令, 改为"口令当面提供"</li>
+    <li class="check-warn">口令脱敏：README 已改为「口令当面提供」（已完成）；但 <code>docs/LOCAL_DEMO.md</code> 仍在公开仓库中写出默认账号口令，需先轮换服务器口令、再清理该文件（未处置，见 <code>docs/OUTCOME.md</code> §3）</li>
     <li class="check-warn">HTTPS (可选): 域名+ICP备案后升级, 当前8088端口HTTP赛事可接受</li>
   </ul>
 
