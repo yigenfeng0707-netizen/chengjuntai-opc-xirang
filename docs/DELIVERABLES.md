@@ -1,7 +1,7 @@
 # 交付物指纹清单
 
 > 由 `python scripts/record_deliverables.py` 生成，勿手工编辑。
-> 生成时间：2026-09-24 08:33 · HEAD `ef6d734`
+> 生成时间：2026-09-24 08:46 · HEAD `b26d587`
 
 | 交付物 | 路径 | 体积 | 实测规格 | sha256(12) |
 |---|---|---|---|---|
@@ -11,5 +11,5 @@
 
 ## 说明
 
-- `demo-video/out/*.mp4` 被 `.gitignore` 排除，**仅存本地 + GitHub Release 归档**（见 `docs/OUTCOME.md`）。
+- 入库状态（2026-09-24 用 git ls-files 实测）：提交版视频与答辩 PPT **已在 HEAD 中并被公开仓库收录** —— `.gitignore` 对已跟踪文件无效；只有母版 `demo-video/out/demo-video.mp4` 未跟踪、仅存本地。
 - 提交版 = 59s 合规剪辑；母版 = 完整 13 分镜，含更多讲解，不用于官方提交。

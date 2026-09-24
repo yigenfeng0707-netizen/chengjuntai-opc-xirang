@@ -33,13 +33,13 @@ def probe_video(path: Path) -> str:
     cmd = [
         "ffprobe", "-v", "error",
         "-show_entries", "format=duration",
-        "-show_entries", "stream=codec_name,width,height,r_frame_rate",
+        "-show_entries", "stream=codec_name,width,height",
         "-select_streams", "v:0", "-of", "json", str(path),
     ]
     info = json.loads(subprocess.run(cmd, capture_output=True, text=True, check=True).stdout)
     st = info["streams"][0]
-    return "%ss · %s×%s · %s" % (
-        round(float(info["format"]["duration"]), 2), st["width"], st["height"], st["codec_name"]
+    return "%.2fs · %s×%s · %s" % (
+        float(info["format"]["duration"]), st["width"], st["height"], st["codec_name"]
     )
 
 
@@ -67,8 +67,7 @@ def build() -> str:
     for label, rel in TARGETS:
         p = ROOT / rel
         if not p.exists():
-            rows.append((label, rel, "缺失", "", ""))
-            continue
+            raise SystemExit("交付物缺失：%s —— 先确认磁盘状态，不要生成半份清单" % rel)
         size = "%.2f MiB" % (p.stat().st_size / 1048576)
         if rel.endswith(".mp4"):
             spec = probe_video(p) + (
@@ -90,7 +89,7 @@ def build() -> str:
     lines += ["| %s | `%s` | %s | %s | `%s` |" % r for r in rows]
     lines += [
         "", "## 说明", "",
-        "- `demo-video/out/*.mp4` 被 `.gitignore` 排除，**仅存本地 + GitHub Release 归档**（见 `docs/OUTCOME.md`）。",
+        "- 入库状态（2026-09-24 用 git ls-files 实测）：提交版视频与答辩 PPT **已在 HEAD 中并被公开仓库收录** —— `.gitignore` 对已跟踪文件无效；只有母版 `demo-video/out/demo-video.mp4` 未跟踪、仅存本地。",
         "- 提交版 = 59s 合规剪辑；母版 = 完整 13 分镜，含更多讲解，不用于官方提交。",
         "",
     ]
