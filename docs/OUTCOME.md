@@ -8,8 +8,8 @@
 | 项 | 状态 | 依据 |
 |---|---|---|
 | 报名 | 已完成 | `README.md:26`「报名状态：已报名」 |
-| 赛道 | 惠民产品创新 / AI+自选开放场景 | `docs/delivery-notes.md:5` |
-| 官方截止 | 2026-08-20 | `docs/delivery-notes.md:5` |
+| 赛道 | 惠民产品创新 / AI+自选开放场景 | `docs/delivery-notes.md:4` |
+| 官方截止 | 2026-08-20 | `docs/delivery-notes.md:3` |
 | 材料就绪 | 已就绪（视频 58.97s + PPT 15 页 + 公网 Demo + 仓库） | 2026-09-24 实测 |
 | **Store 实际上传** | **待核实** —— 登录 https://ai.js.189.cn/OPCCompetition/OPCOutFiles 查「我的作品」；`docs/SUBMISSION_CHECKLIST.html` 明确记录 Agent 无法代登，故仓库内无回执 | 用户本人 |
 | **8/11 聚能湾答辩结果** | **待核实** —— 仓库内无任何晋级/淘汰记录 | 用户本人 / 赛事通知 |
@@ -32,9 +32,9 @@
 
 - 归档结论（2026-09-24）：**不建 GitHub Release**。理由三条，均可复核：
   1. 提交版视频（blob `dcd977f6`，6,019,286 B）与答辩 PPT 自 `69f448a`（2026-08-10）起就被 git 跟踪，已随 public 仓存在于 GitHub —— 防丢失价值由 git 历史承担；
-  2. 母版 `demo-video/out/demo-video.mp4`（71.02s / 13 分镜）可由仓内 `demo-video/src/Root.tsx` + `demo-video/public/shots.json` 按 `docs/delivery-notes.md`「视频重跑」重渲染，非孤本；
+  2. 母版 `demo-video/out/demo-video.mp4`（71.02s / 13 分镜）理论上可重建，但**不是零成本**：分镜脚本与画面代码在仓内（`demo-video/src/Root.tsx` + `demo-video/public/shots.json`），而 `docs/delivery-notes.md`「视频重跑」调用的合成脚本在**仓库之外**（用户主目录下的 demo-video-factory 技能），且需要一次能正常跑的演示来录制。所以母版丢了能重建，但重建工具不在版本控制里。
   3. 本机 C: 与 D: 同在 **Disk 0**（一块物理盘），同机任何「另存一份」副本都不构成异地备份，只会制造伪安全感。
-- 真正的异地副本（如需）：外接盘 / 网盘 / 私有仓，任选其一后用 `python scripts/record_deliverables.py` 之外的 `certutil -hashfile <文件> SHA256` 比对指纹。
+- 仍欠的动作（本台账唯一开放的收尾项）：本机只有 Disk 0 一块物理盘，母版视频与 `content_factory/config.yaml`（含密钥）都是**单副本**。要做真异地副本，外接盘 / 网盘 / 私有仓任选其一，落地后用 `certutil -hashfile <文件> SHA256` 与 `docs/DELIVERABLES.md` 的 sha256(12) 前缀比对。同机换目录不算备份。
 - 冻结点：`5915737`（2026-08-11 08:40 +0800，即预赛最后一次代码提交）
 - 重跑视频 / PPT：`docs/delivery-notes.md`「视频重跑」「PPT 重生成」两节
 - 官方提交规格复核：视频 ≤60s、1920×1080、h264+aac、≤100MB —— 提交版 4 项全合规
