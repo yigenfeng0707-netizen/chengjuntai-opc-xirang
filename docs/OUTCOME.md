@@ -44,4 +44,4 @@
 
 最后一次代码提交 2026-08-11，至 2026-09-24 无活动。重启本地演示：
 `scripts/start_local_demo.bat` → http://127.0.0.1:8090（评委 60 秒体验路径见 `README.md`）。
-先跑 `python scripts/health_check.py` 与 `python tests/test_campaign_core.py`。
+先跑 `python scripts/health_check.py` 与 `python tests/test_campaign_core.py`（mock 回归的产物写进临时目录，不会污染 `data/`、`articles/` 与本机检索索引，口径见 `README.md`「无 Key 状态机回归」）。

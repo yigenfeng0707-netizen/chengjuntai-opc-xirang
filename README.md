@@ -51,6 +51,7 @@ python scripts/health_check.py
 
 ```bash
 python tests/test_campaign_core.py
+python tests/test_wechat_draft.py
 python scripts/run_demo_campaign.py
 ```
 
