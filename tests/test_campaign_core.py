@@ -92,14 +92,15 @@ def test_store_atomic_write():
     assert leftovers == [], f"真实写入后残留临时文件：{leftovers}"
 
     # 产物登记与驳回同样是"写失败不能当成功"：一个抛错，一个不得把 null 交给前端
-    with mock.patch.object(store, "_dump_atomic", side_effect=OSError("模拟磁盘占用")):
-        before = store._load_metrics().get("artifacts_count", 0)
+    # 计数用 spy 断，不能读 metrics 文件：同一个 mock 下 bump_metric 自己也写不进去，读了也是假绿
+    with mock.patch.object(store, "_dump_atomic", side_effect=OSError("模拟磁盘占用")), \
+            mock.patch.object(store, "bump_metric") as bump_spy:
         try:
             store.save_artifact(camp["id"], "ops", "标题", "正文")
             raise AssertionError("save_artifact 登记写盘失败时应抛 OSError")
         except OSError as ex:
             assert "未能落盘" in str(ex), ex
-        assert store._load_metrics().get("artifacts_count") == before, "登记失败不得计数"
+        assert not bump_spy.called, f"登记失败不得计数，实际调用 {bump_spy.call_args_list}"
     from campaign import runner
     with mock.patch.object(runner.store, "update_campaign", return_value=None):
         try:

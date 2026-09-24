@@ -544,7 +544,11 @@ def campaign_reject(cid: str, req: GateReq, user=Depends(_token_user)):
         raise HTTPException(404, "战役不存在")
     if not _campaign_owner_ok(user, c):
         raise HTTPException(403, "无权操作该战役")
-    return camp_runner.reject_gate(cid, note=req.note)
+    try:
+        return camp_runner.reject_gate(cid, note=req.note)
+    except Exception as ex:
+        op_logger.log("web_campaign", f"驳回异常[{cid}]: {type(ex).__name__}: {ex}", level="ERROR", user=user.get("username"))
+        _safe_http_error(500, "驳回失败，请稍后重试")
 
 
 @app.post("/api/campaign/{cid}/run")
