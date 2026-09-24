@@ -31,6 +31,7 @@
 |:----:|------|------|
 | [x] | **gitignore 审计** | `users.json` / `config.yaml` / `ADMIN_ACCESS.local.md` / `*.env` / `export_docx/` / `bid_workspace/` / `schedule_config.json` 已忽略 |
 | [x] | **新注册密码哈希** | `auth_users`：werkzeug 哈希；旧演示账号明文仍可登录，成功后惰性升级 |
+| [x] | **战役状态文件读写并发** | `campaign/store.py`：写走唯一临时名 + `os.replace`（读者只会看到旧文件或新文件），replace 共享冲突退避重试后仍失败记 ERROR 并返回失败（`update_campaign` → `None`，`create_campaign` 抛 `OSError`）；读侧对 Windows `os.replace` 瞬间的 `PermissionError(13)` 重试，不再把并发窗口误报成"战役不存在" |
 | [x] | **公网默认密码横幅** | `CHENGJUNTAI_PUBLIC=1` 或 `config.public_deploy: true` 时，登录页强提醒改密（不打印口令） |
 | [ ] | **公网改密** | 用户在 ECS 上改 admin/operator（勿 commit 新密） |
 | [ ] | **HTTPS** | 用户侧证书 / Nginx |

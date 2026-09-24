@@ -287,8 +287,9 @@ def start_campaign(goal: str, template: str = "lead_gen", created_by: str = "adm
     except Exception:
         active = None
 
+    cid = camp["id"]
     camp = store.update_campaign(
-        camp["id"],
+        cid,
         status="planned",
         plan={
             "summary": plan.get("summary") or "",
@@ -302,9 +303,12 @@ def start_campaign(goal: str, template: str = "lead_gen", created_by: str = "adm
         gate={"required": True, "approved": False, "note": plan.get("gate_message") or ""},
     )
 
+    if camp is None:
+        raise RuntimeError(f"战役计划未能落盘：{cid}")
+
     if auto_approve:
         try:
-            return approve_gate(camp["id"], note="auto_approve")
+            return approve_gate(cid, note="auto_approve")
         except Exception as ex:
             op_logger.log("campaign_runner", f"自动审批失败: {ex}", level="WARN")
             return camp

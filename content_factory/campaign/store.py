@@ -2,9 +2,11 @@
 """战役持久化：JSON 文件存储（预赛可交付，后续可换 MySQL）"""
 import os
 import json
+import time
 import datetime
 import threading
 from typing import Optional
+import op_logger
 from config_loader import DATA_DIR
 
 CAMPAIGNS_DIR = os.path.join(DATA_DIR, "campaigns")
@@ -32,6 +34,52 @@ def _path(cid: str) -> str:
     return os.path.join(CAMPAIGNS_DIR, f"{cid}.json")
 
 
+def _dump_atomic(obj, fp: str):
+    """唯一临时名 + os.replace：并发读者永远只会看到旧文件或新文件，不会看到半截。"""
+    tmp = f"{fp}.{os.getpid()}.{threading.get_ident()}.tmp"
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(obj, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, fp)
+    except OSError:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def _write_json(obj, fp: str, attempts: int = 5) -> bool:
+    """Windows 上读者短暂占用目标文件会让 replace 抛共享冲突；重试后仍失败就明确报障，
+    不再把「没写进去」当成写成功返回。"""
+    last = None
+    for i in range(attempts):
+        try:
+            _dump_atomic(obj, fp)
+            return True
+        except OSError as e:
+            last = e
+            time.sleep(0.05 * (i + 1))
+    op_logger.log("campaign_store", f"写入失败 [{os.path.basename(fp)}]: {last}", level="ERROR")
+    return False
+
+
+def _read_json(fp: str, attempts: int = 4):
+    """读 JSON；写者 replace 的瞬间 Windows 会抛共享冲突（实测 PermissionError 13，文件仍在），
+    重试后才判定为读不到，避免把并发瞬间误报成'战役不存在'。"""
+    for i in range(attempts):
+        if not os.path.exists(fp):
+            return None
+        try:
+            with open(fp, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
+            time.sleep(0.02 * (i + 1))
+    return None
+
+
 def _load_metrics() -> dict:
     _default = {
         "campaigns_started": 0,
@@ -44,16 +92,11 @@ def _load_metrics() -> dict:
     }
     if not os.path.exists(METRICS_FILE):
         return _default
-    try:
-        with open(METRICS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return _default
+    return _read_json(METRICS_FILE) or _default
 
 
 def _save_metrics(m: dict):
-    with open(METRICS_FILE, "w", encoding="utf-8") as f:
-        json.dump(m, f, ensure_ascii=False, indent=2)
+    _write_json(m, METRICS_FILE)
 
 
 def bump_metric(key: str, delta=1):
@@ -74,8 +117,9 @@ def metrics_snapshot() -> dict:
         for name in os.listdir(CAMPAIGNS_DIR):
             if not name.endswith(".json"):
                 continue
-            with open(os.path.join(CAMPAIGNS_DIR, name), "r", encoding="utf-8") as f:
-                c = json.load(f)
+            c = _read_json(os.path.join(CAMPAIGNS_DIR, name))
+            if not isinstance(c, dict):
+                continue
             tpl = c.get("template") or "other"
             if tpl not in by_tpl:
                 tpl = "other"
@@ -174,22 +218,14 @@ def create_campaign(goal: str, template: str = "lead_gen", created_by: str = "ad
         "metrics": {"hours_saved_est": 0},
     }
     with _lock:
-        with open(_path(cid), "w", encoding="utf-8") as f:
-            json.dump(camp, f, ensure_ascii=False, indent=2)
+        if not _write_json(camp, _path(cid)):
+            raise OSError(f"战役文件无法创建：{_path(cid)}")
         bump_metric("campaigns_started", 1)
     return camp
 
 
 def get_campaign(cid: str) -> Optional[dict]:
-    fp = _path(cid)
-    if not os.path.exists(fp):
-        return None
-    try:
-        with open(fp, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError):
-        # 文件损坏（空文件/写入中断）— 返回 None 而非抛异常
-        return None
+    return _read_json(_path(cid))
 
 
 def update_campaign(cid: str, **kwargs) -> Optional[dict]:
@@ -199,18 +235,9 @@ def update_campaign(cid: str, **kwargs) -> Optional[dict]:
             return None
         camp.update(kwargs)
         camp["updated_at"] = _now()
-        # 原子写入：先写临时文件再重命名，防止写入中断导致文件损坏
-        fp = _path(cid)
-        tmp = fp + ".tmp"
-        try:
-            with open(tmp, "w", encoding="utf-8") as f:
-                json.dump(camp, f, ensure_ascii=False, indent=2)
-            os.replace(tmp, fp)  # 原子操作：要么成功替换，要么保留旧文件
-        except OSError:
-            try:
-                os.remove(tmp)
-            except OSError:
-                pass
+        # 写不进去就返回 None：调用方据此判断，不把未落盘的状态当成功继续推进
+        if not _write_json(camp, _path(cid)):
+            return None
         return camp
 
 
@@ -222,8 +249,9 @@ def list_campaigns(limit: int = 50) -> list:
     out = []
     for name in files:
         try:
-            with open(os.path.join(CAMPAIGNS_DIR, name), "r", encoding="utf-8") as f:
-                c = json.load(f)
+            c = _read_json(os.path.join(CAMPAIGNS_DIR, name))
+            if not isinstance(c, dict):
+                continue
             out.append({
                 "id": c["id"],
                 "goal": c["goal"],
