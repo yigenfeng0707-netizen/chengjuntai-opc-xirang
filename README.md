@@ -23,7 +23,7 @@
 
 > 正式演示：`XIRANG_API_KEY` / `TOKENHUB_API_KEY`（主办方星辰/息壤）。等 Token 期间可用 SenseNova/百炼 interim；全无 Key 时看板显式横幅并**明确报错**，禁止静默 mock。  
 > 公众号草稿：本机配置 `WECHAT_APP_ID`/`WECHAT_APP_SECRET`（或 `config.wechat.local.yaml`，勿贴密钥到聊天）→ 稿件台「推送到公众号草稿」。见 [docs/WECHAT_PUBLISH.md](./docs/WECHAT_PUBLISH.md)。  
-> 报名状态：**已报名**。**P0 一周执行表** [docs/P0_WEEK_PLAN.md](./docs/P0_WEEK_PLAN.md)；用户亲办 [docs/USER_ONLY_TODO.md](./docs/USER_ONLY_TODO.md)；双路径 [docs/CTYUN_TRIAL.md](./docs/CTYUN_TRIAL.md)。
+> 报名状态：**已报名**。**P0 一周执行表** [docs/archive/P0_WEEK_PLAN.md](./docs/archive/P0_WEEK_PLAN.md)；用户亲办 [docs/archive/USER_ONLY_TODO.md](./docs/archive/USER_ONLY_TODO.md)；双路径 [docs/archive/CTYUN_TRIAL.md](./docs/archive/CTYUN_TRIAL.md)。
 
 ---
 
@@ -90,17 +90,18 @@ python scripts/smoke_mcp.py
 
 ## 部署
 
-- 试用公网（现在就能做）：[docs/CTYUN_TRIAL.md](./docs/CTYUN_TRIAL.md) + [DEPLOY天翼云.md](./DEPLOY天翼云.md)
+- 试用公网（现在就能做）：[docs/archive/CTYUN_TRIAL.md](./docs/archive/CTYUN_TRIAL.md) + [DEPLOY天翼云.md](./DEPLOY天翼云.md)
 - 加固：[docs/PROD_HARDENING.md](./docs/PROD_HARDENING.md)
 
 ---
 
 ## 参赛材料
 
-- [docs/P0_WEEK_PLAN.md](./docs/P0_WEEK_PLAN.md) **P0 一周执行主表（冲 85+）**
-- [docs/USER_ONLY_TODO.md](./docs/USER_ONLY_TODO.md) 仅用户必须做的事
-- [docs/CTYUN_TRIAL.md](./docs/CTYUN_TRIAL.md) 天翼云试用 + 星辰 Token 双路径
-- [docs/NEXT_SPRINT.md](./docs/NEXT_SPRINT.md) 报名后一周冲刺摘要
+- [docs/archive/P0_WEEK_PLAN.md](./docs/archive/P0_WEEK_PLAN.md) **P0 一周执行主表（冲 85+）**
+- [docs/archive/USER_ONLY_TODO.md](./docs/archive/USER_ONLY_TODO.md) 仅用户必须做的事
+- [docs/archive/CTYUN_TRIAL.md](./docs/archive/CTYUN_TRIAL.md) 天翼云试用 + 星辰 Token 双路径
+- [docs/archive/NEXT_SPRINT.md](./docs/archive/NEXT_SPRINT.md) 报名后一周冲刺摘要
+  （以上 4 份为 2026-08 预赛期计划文档，已归档，保留原貌）
 - [docs/PROJECT_DOC.md](./docs/PROJECT_DOC.md) 项目文档 / BP
 - [docs/PPT_SPEAKER_DECK.md](./docs/PPT_SPEAKER_DECK.md) 15 页演讲稿 · [HTML deck](./docs/PPT_SPEAKER_DECK.html)
 - [docs/PPT_OUTLINE.md](./docs/PPT_OUTLINE.md) 答辩大纲
