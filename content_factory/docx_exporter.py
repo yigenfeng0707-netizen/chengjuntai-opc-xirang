@@ -4,10 +4,10 @@ import os
 import re
 from typing import Optional
 
-from config_loader import ARTICLES_DIR, DATA_DIR, ROOT
+from config_loader import ARTICLES_DIR, DATA_DIR, WRITE_ROOT
 import op_logger
 
-EXPORT_DOCX_DIR = os.path.join(ROOT, "export_docx")
+EXPORT_DOCX_DIR = os.path.join(WRITE_ROOT, "export_docx")
 ARTICLES_META = os.path.join(DATA_DIR, "articles_meta.json")
 os.makedirs(EXPORT_DOCX_DIR, exist_ok=True)
 

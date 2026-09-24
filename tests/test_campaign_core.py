@@ -36,22 +36,27 @@ def test_commander_fallback_json():
     assert "research" in roles and "ops" in roles
 
 
+def _wait_terminal(store, cid, timeout=60):
+    """轮询到终态：running 是后台任务的合法中间态，读到 None 说明文件正被写，继续等。"""
+    deadline = time.time() + timeout
+    camp = None
+    while time.time() < deadline:
+        camp = store.get_campaign(cid)
+        if camp and camp["status"] not in ("planning", "planned", "running"):
+            return camp["status"]
+        time.sleep(1)
+    return (camp or {}).get("status")
+
+
 def test_campaign_state_machine():
     _mock_cfg()
     from campaign import runner, store
     c = runner.start_campaign("测试目标", allow_mock=True)
     assert c["status"] == "planned"
-    c = runner.approve_gate(c["id"])
-    # approve_gate 从 planned 起走后台线程执行任务，running 是合法中间态
-    deadline = time.time() + 60
-    status = c["status"]
-    while status in ("planning", "planned", "running") and time.time() < deadline:
-        time.sleep(1)
-        status = store.get_campaign(c["id"])["status"]
-    assert status in ("awaiting_review", "completed", "partial_success", "failed"), status
-    if status in ("awaiting_review", "completed"):
-        path = runner.export_weekly_report(c["id"])
-        assert path
+    runner.approve_gate(c["id"])
+    status = _wait_terminal(store, c["id"])
+    assert status in ("awaiting_review", "completed"), status
+    assert runner.export_weekly_report(c["id"])
 
 
 def test_provider_status_hides_placeholder():

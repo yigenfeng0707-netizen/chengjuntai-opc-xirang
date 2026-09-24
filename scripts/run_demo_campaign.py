@@ -51,14 +51,12 @@ def main():
     lead_id = camp["id"]
     runner.approve_gate(lead_id, note="demo")
     lead_status = _wait_status(store, lead_id)
-    assert lead_status in ("awaiting_review", "completed", "partial_success", "failed"), lead_status
-
-    if lead_status in ("awaiting_review", "completed"):
-        assert runner.export_weekly_report(lead_id), "report path empty"
-        if lead_status == "awaiting_review":
-            runner.approve_gate(lead_id, note="final")
-            lead_status = _wait_status(store, lead_id, timeout=10)
-        assert lead_status == "completed", lead_status
+    assert lead_status in ("awaiting_review", "completed"), lead_status
+    assert runner.export_weekly_report(lead_id), "report path empty"
+    if lead_status == "awaiting_review":
+        runner.approve_gate(lead_id, note="final")
+        lead_status = _wait_status(store, lead_id, timeout=10)
+    assert lead_status == "completed", lead_status
 
     brief_id = runner.start_campaign(
         "撰写一篇息壤+一人公司行业综述并沉淀知识库要点",
@@ -67,10 +65,12 @@ def main():
         auto_approve=True,
     )["id"]
     brief_status = _wait_status(store, brief_id)
+    assert brief_status in ("awaiting_review", "completed"), brief_status
     if brief_status == "awaiting_review":
         runner.approve_gate(brief_id, note="final")
         runner.export_weekly_report(brief_id)
         brief_status = _wait_status(store, brief_id, timeout=10)
+    assert brief_status == "completed", brief_status
     print(json.dumps({
         "lead_gen": lead_status,
         "industry_brief": brief_status,

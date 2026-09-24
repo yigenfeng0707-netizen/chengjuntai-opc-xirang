@@ -18,15 +18,15 @@ import yaml
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
-# 产物目录整体可重定向：无 Key 回归测试用 CHENGJUNTAI_WRITE_ROOT 把稿件与运行数据
-# 写到临时目录，否则跑一次测试就污染 data/ 与 articles/ 里的演示种子数据。
+# 产物目录重定向，**仅无 Key 回归测试设置**（生产/演示勿设）：不重定向的话，跑一次测试就污染
+# data/、articles/ 里被 git 跟踪的演示种子，以及 gitignored 但会累积 mock 文档的检索索引。
 WRITE_ROOT = os.environ.get("CHENGJUNTAI_WRITE_ROOT") or ROOT
 
 ARTICLES_DIR = os.path.join(WRITE_ROOT, "articles")
 EXPORT_PDF_DIR = os.path.join(WRITE_ROOT, "export_pdf")
 LOGS_DIR = os.path.join(WRITE_ROOT, "logs")
 DATA_DIR = os.path.join(WRITE_ROOT, "data")
-VECTOR_DB_DIR = os.path.join(ROOT, "vector_db")
+VECTOR_DB_DIR = os.path.join(WRITE_ROOT, "vector_db")
 KNOWLEDGE_DIR = os.path.join(ROOT, "knowledge")
 TEMPLATES_DIR = os.path.join(ROOT, "templates")
 

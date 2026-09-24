@@ -54,7 +54,7 @@ python tests/test_campaign_core.py
 python scripts/run_demo_campaign.py
 ```
 
-两条回归都把 mock 产物写进临时目录（`CHENGJUNTAI_WRITE_ROOT`），不会污染 `content_factory/data/` 与 `articles/` 里的演示种子数据。
+三条 mock 回归（含 `tests/test_wechat_draft.py`）都把产物写进临时目录（`CHENGJUNTAI_WRITE_ROOT`），覆盖 `data/`、`articles/`、`logs/`、`export_docx/`、`export_pdf/`、`vector_db/`，不会污染仓库里被跟踪的演示种子，也不会往本机检索索引里塞 mock 稿件。该变量只在回归脚本里设置，**生产与演示环境请勿设置**。
 
 ---
 

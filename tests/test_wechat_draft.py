@@ -1,17 +1,25 @@
 # -*- coding: utf-8 -*-
 """微信草稿推送单元/冒烟：默认 mock HTTP，不访问真实微信。"""
+import atexit
 import json
 import os
+import shutil
 import sys
+import tempfile
 import unittest
 from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CF = os.path.join(ROOT, "content_factory")
+# 必须在 import 业务模块之前设好：写根重定向是 import 期一次性绑定
+WRITE_ROOT = tempfile.mkdtemp(prefix="chengjuntai-regression-")
+os.environ["CHENGJUNTAI_WRITE_ROOT"] = WRITE_ROOT
+atexit.register(shutil.rmtree, WRITE_ROOT, True)
 sys.path.insert(0, CF)
 
 import wechat_publisher  # noqa: E402
 import quality_gate  # noqa: E402
+from config_loader import ARTICLES_DIR  # noqa: E402
 
 
 class TestMarkdownHtml(unittest.TestCase):
@@ -65,17 +73,11 @@ class TestPublishFlow(unittest.TestCase):
                     self.assertFalse(r.get("ok"))
 
     def test_draft_add_mocked(self):
-        sample_md = os.path.join(CF, "articles")
-        # pick any existing article id if present
-        article_id = None
-        if os.path.isdir(sample_md):
-            for fn in os.listdir(sample_md):
-                if fn.endswith(".md") and fn.startswith("ART"):
-                    article_id = fn.split("_")[0]
-                    if article_id.startswith("ART"):
-                        break
-        if not article_id:
-            self.skipTest("无本地 articles 样例")
+        # 夹具稿件自建在重定向后的写根里，不读仓库中被跟踪的 articles/ 种子
+        article_id = "ART_TESTFIXTURE"
+        os.makedirs(ARTICLES_DIR, exist_ok=True)
+        with open(os.path.join(ARTICLES_DIR, article_id + "_草稿链路夹具.md"), "w", encoding="utf-8") as f:
+            f.write("---\nid: ART_TESTFIXTURE\ntitle: 草稿链路夹具\n---\n\n# 草稿链路夹具\n\n用于验证推送链路的正文。\n")
 
         env = {
             "WECHAT_APP_ID": "wx1234567890abcd",
