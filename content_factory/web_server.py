@@ -173,16 +173,39 @@ app.add_middleware(
     allow_origins=["*"],  # Nginx 反代同源部署，无需跨域
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        # 魔搭创空间网关会拦截带 Authorization 头的请求（返回 403 SDK Token），
+        # 前端改用自定义头承载会话 token，故需一并放行。
+        "X-Chengjun-Token",
+        "X-Auth-Token",
+    ],
 )
 
 _sessions = {}
 _SESSION_TTL = 7200  # 会话有效期 2 小时（秒）
 
 
-def _token_user(request: Request):
+# 会话 token 的承载头（按优先级）。
+# 为什么不用 Authorization：魔搭创空间（ModelScope Studio）网关会拦截任何带
+# Authorization 头的请求，直接返回 403 {"Code":10010101007,"Message":"当前接口不支持
+# 通过SDK Token直接访问..."}。表现就是「登录能过、一进系统所有接口全挂」。
+# 因此前端改用自定义头；Authorization 仍保留兼容（本机 / ECS / nginx / MCP / 回归脚本）。
+_TOKEN_HEADERS = ("X-Chengjun-Token", "X-Auth-Token")
+
+
+def _extract_token(request: Request) -> str:
+    for name in _TOKEN_HEADERS:
+        value = (request.headers.get(name) or "").strip()
+        if value:
+            return value
     auth = request.headers.get("Authorization", "")
-    token = auth.replace("Bearer ", "").strip()
+    return auth.replace("Bearer ", "").strip()
+
+
+def _token_user(request: Request):
+    token = _extract_token(request)
     user = _sessions.get(token)
     if not user:
         raise HTTPException(status_code=401, detail="未登录或会话过期")

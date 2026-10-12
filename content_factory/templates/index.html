@@ -173,9 +173,19 @@ const JUDGE_NL_SAMPLE={
 };
 function $(id){return document.getElementById(id);}
 function setHTML(id,html){const el=$(id);if(!el){console.warn('setHTML skipped, missing #'+id);return false;}el.innerHTML=html;return true;}
+// 会话 token 走自定义头，不能用 Authorization：
+// 魔搭创空间（ModelScope Studio）网关会拦截任何带 Authorization 头的请求并返回
+// 403 {"Code":10010101007,...}，症状就是「登录成功、一进系统所有接口全挂（闪退感）」。
+// 后端 _token_user 同时兼容 Authorization（本机/ECS/nginx/MCP/回归脚本）。
+const AUTH_HEADER='X-Chengjun-Token';
+function authHeaders(extra){
+  const h=Object.assign({},extra||{});
+  if(TOKEN)h[AUTH_HEADER]=TOKEN;
+  return h;
+}
 async function api(path,opts){
   opts=opts||{};opts.headers=opts.headers||{};
-  if(TOKEN)opts.headers['Authorization']='Bearer '+TOKEN;
+  if(TOKEN)opts.headers[AUTH_HEADER]=TOKEN;
   if(opts.body&&!opts.headers['Content-Type'])opts.headers['Content-Type']='application/json';
   let r;
   try{r=await fetch(path,opts);}catch(e){throw new Error('网络请求失败: '+(e&&e.message?e.message:e));}
@@ -591,7 +601,7 @@ async function mkReport(id){try{const r=await api('/api/campaign/'+id+'/report',
 async function exportWord(id){
   try{
     const r=await api('/api/campaign/'+id+'/report_docx',{method:'POST',body:'{}'});
-    const resp=await fetch('/api/campaign/'+id+'/report_docx/file',{headers:{Authorization:'Bearer '+TOKEN}});
+    const resp=await fetch('/api/campaign/'+id+'/report_docx/file',{headers:authHeaders()});
     if(!resp.ok) throw new Error('下载失败 '+resp.status);
     const blob=await resp.blob();
     const url=URL.createObjectURL(blob);
@@ -624,7 +634,7 @@ async function exportArtDocx(cid,aid){
   try{
     const r=await api('/api/campaign/'+cid+'/artifact/'+aid+'/docx',{method:'POST',body:'{}'});
     const name=r.docx?r.docx.split(/[/\\\\]/).pop(): (cid+'_'+aid+'.docx');
-    const resp=await fetch('/api/download_docx?path='+encodeURIComponent(name),{headers:{Authorization:'Bearer '+TOKEN}});
+    const resp=await fetch('/api/download_docx?path='+encodeURIComponent(name),{headers:authHeaders()});
     if(!resp.ok) throw new Error('下载失败');
     const blob=await resp.blob(); const url=URL.createObjectURL(blob);
     const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
@@ -898,7 +908,7 @@ async function previewArticle(file, id){
 }
 async function exportArticleDocx(aid){
   try{
-    const resp=await fetch('/api/article/'+encodeURIComponent(aid)+'/docx',{headers:{Authorization:'Bearer '+TOKEN}});
+    const resp=await fetch('/api/article/'+encodeURIComponent(aid)+'/docx',{headers:authHeaders()});
     if(!resp.ok){const t=await resp.text(); throw new Error(t||('HTTP '+resp.status));}
     const blob=await resp.blob(); const url=URL.createObjectURL(blob);
     const a=document.createElement('a'); a.href=url; a.download=aid+'.docx'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
@@ -1246,7 +1256,7 @@ async function bidExportMatrix(){
     const r=await api('/api/bid/workspace/export_docx',{method:'POST',body:JSON.stringify({
       requirements:_bidWs.requirements, matrix:_bidWs.matrix, project_name:_bidWs.projectName||''
     })});
-    const resp=await fetch(r.download,{headers:{Authorization:'Bearer '+TOKEN}});
+    const resp=await fetch(r.download,{headers:authHeaders()});
     if(!resp.ok) throw new Error(await resp.text());
     const blob=await resp.blob(); const url=URL.createObjectURL(blob);
     const a=document.createElement('a'); a.href=url; a.download=r.filename||'bid_matrix.docx';

@@ -3,7 +3,7 @@
     {
       "username": "admin",
       "email": "admin@chengjun.local",
-      "password": "scrypt:32768:8:1$BfOMA9CJTs1MP0wI$81648ecc5b5d4f192527e7b2b984c7960f502a354deebe6d657fb5893d267e23b42a7ccd7ce4caa55b144cb8e186a0340639ff133e4e04ebe2b7032e4d6b047f",
+      "password": "scrypt:32768:8:1$ZeGe8YVx1vqbLHbE$28f0abbe694a4035000d16085d79907fa4e9d6cdcb8829cd4a43b7bfddda17f2af621e009a9266585badef37316d005b5a62b0e9d49dafc1f8b0bb850b00d96b",
       "display_name": "成军台管理员",
       "role": "super_admin",
       "enabled": true,
@@ -54,7 +54,7 @@
     {
       "username": "operator",
       "email": "operator@chengjun.local",
-      "password": "pbkdf2:sha256:100000$g8s/g0qNp6WBnG8/1CKgiQ==$UFqXABcxN/c3dt1twee2gkehg4p6E7E3UuKIComL4yI=",
+      "password": "scrypt:32768:8:1$d5TDDjpVd4eCrF5e$66aa480a570e9e3cd8b09cc426fc7131c76466066b957f66b56e886f41d3e70d13973127dda2602b20c1f180d85776a070fbb20507917863ddda65fec131c13a",
       "password_algo": "werkzeug",
       "display_name": "运维操作员",
       "role": "operator",
