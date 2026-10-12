@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-noto-cjk && rm -rf /var/lib/apt/lists/*
 
 # 依赖清单（无扩展名文件，规避 AIGC 水印 hook 对 .txt 的注入）
-COPY requirements /tmp/requirements
+COPY content_factory/requirements /tmp/requirements
 RUN pip install --no-cache-dir -r /tmp/requirements \
     -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 
