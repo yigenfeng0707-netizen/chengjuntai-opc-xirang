@@ -17,6 +17,12 @@ RUN pip install --no-cache-dir -r /tmp/requirements \
 # 应用源码整目录拷贝（users.json / data / templates 等随带）
 COPY content_factory /app/content_factory
 
+# 仓库根支撑模块（content_factory 经 REPO_ROOT import db / fetch_real_data）
+COPY db.py fetch_real_data.py seed_demo_db.py /app/
+
+# 构建期初始化演示库（空表时写入 12 行可问数样本；SQLite at /app/bid_telecom.db）
+RUN cd /app && python seed_demo_db.py
+
 # 运行时目录兜底（拷贝时 logs 等可能被排除）
 RUN cd /app/content_factory \
     && mkdir -p articles export_pdf export_docx logs data vector_db knowledge templates

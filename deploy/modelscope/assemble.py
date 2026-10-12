@@ -45,12 +45,24 @@ def place_config(dst_path):
         yaml.safe_dump(cfg, f, allow_unicode=True, sort_keys=False)
 
 
+def copy_support_modules():
+    """拷贝仓库根的支撑模块到 studio 根（= 容器内 REPO_ROOT=/app）。
+    content_factory 多处 sys.path 插入上级目录后 import db / fetch_real_data，
+    缺失会导致启动崩溃（DeployFailed）。seed_demo_db.py 供构建期初始化演示库。
+    """
+    for name in ("db.py", "fetch_real_data.py", "seed_demo_db.py"):
+        src = os.path.join(ROOT, name)
+        if os.path.isfile(src):
+            shutil.copy2(src, os.path.join(STUDIO, name))
+
+
 def main():
     if os.path.exists(STUDIO):
         shutil.rmtree(STUDIO)
     os.makedirs(STUDIO)
     copy_tree(CF, os.path.join(STUDIO, "content_factory"))
     place_config(os.path.join(STUDIO, "content_factory", "config.yaml"))
+    copy_support_modules()
     here = os.path.dirname(os.path.abspath(__file__))
     shutil.copy2(os.path.join(here, "Dockerfile"), os.path.join(STUDIO, "Dockerfile"))
     shutil.copy2(os.path.join(here, "ms_deploy.json"), os.path.join(STUDIO, "ms_deploy.json"))
