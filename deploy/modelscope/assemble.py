@@ -45,6 +45,14 @@ def place_config(dst_path):
         yaml.safe_dump(cfg, f, allow_unicode=True, sort_keys=False)
 
 
+def place_users(dst_path):
+    """部署内置账号表（users.json 被 gitignore，仓库不含；
+    users.deploy.json 为随仓库提交的部署副本，仅 scrypt 哈希无明文）"""
+    src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.deploy.json")
+    if os.path.isfile(src):
+        shutil.copy2(src, dst_path)
+
+
 def copy_support_modules():
     """拷贝仓库根的支撑模块到 studio 根（= 容器内 REPO_ROOT=/app）。
     content_factory 多处 sys.path 插入上级目录后 import db / fetch_real_data，
@@ -62,6 +70,7 @@ def main():
     os.makedirs(STUDIO)
     copy_tree(CF, os.path.join(STUDIO, "content_factory"))
     place_config(os.path.join(STUDIO, "content_factory", "config.yaml"))
+    place_users(os.path.join(STUDIO, "content_factory", "users.json"))
     copy_support_modules()
     here = os.path.dirname(os.path.abspath(__file__))
     shutil.copy2(os.path.join(here, "Dockerfile"), os.path.join(STUDIO, "Dockerfile"))

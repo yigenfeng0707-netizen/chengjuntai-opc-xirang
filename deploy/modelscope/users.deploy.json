@@ -1,0 +1,200 @@
+{
+  "users": [
+    {
+      "username": "admin",
+      "email": "admin@chengjun.local",
+      "password": "scrypt:32768:8:1$BfOMA9CJTs1MP0wI$81648ecc5b5d4f192527e7b2b984c7960f502a354deebe6d657fb5893d267e23b42a7ccd7ce4caa55b144cb8e186a0340639ff133e4e04ebe2b7032e4d6b047f",
+      "display_name": "成军台管理员",
+      "role": "super_admin",
+      "enabled": true,
+      "created_at": "2026-07-29T00:00:00",
+      "last_login_at": "2026-08-10T18:15:42",
+      "profile": {
+        "tags": [
+          "系统账号"
+        ],
+        "segment": "heavy",
+        "notes": "默认超级管理员（兼容 username 登录）"
+      },
+      "usage": {
+        "campaigns_started": 4,
+        "tasks_done": 5,
+        "articles_generated": 0,
+        "logins": 24,
+        "reports_exported": 5
+      },
+      "password_algo": "werkzeug"
+    },
+    {
+      "username": "fengyigen",
+      "email": "fengyigen@qq.com",
+      "password": "scrypt:32768:8:1$BKfGHAWO230Eft0C$d48788dbb42e4ab17e2c1cb0a9aa0b9a3a0637858744e813d84fdab6428b8b11b634b82284db35b60f3e1da984ca34472ac60c125b044e1d2a14839a4980ee1e",
+      "display_name": "风一艮",
+      "role": "super_admin",
+      "enabled": true,
+      "created_at": "2026-07-29T21:20:00",
+      "last_login_at": "2026-07-30T08:17:55",
+      "profile": {
+        "tags": [
+          "超级管理员",
+          "参赛联系人"
+        ],
+        "segment": "heavy",
+        "notes": "主超级管理员邮箱账号"
+      },
+      "usage": {
+        "campaigns_started": 6,
+        "tasks_done": 6,
+        "articles_generated": 7,
+        "logins": 10,
+        "reports_exported": 2
+      },
+      "password_algo": "werkzeug"
+    },
+    {
+      "username": "operator",
+      "email": "operator@chengjun.local",
+      "password": "pbkdf2:sha256:100000$g8s/g0qNp6WBnG8/1CKgiQ==$UFqXABcxN/c3dt1twee2gkehg4p6E7E3UuKIComL4yI=",
+      "password_algo": "werkzeug",
+      "display_name": "运维操作员",
+      "role": "operator",
+      "enabled": true,
+      "created_at": "2026-07-29T00:00:00",
+      "last_login_at": null,
+      "profile": {
+        "tags": [
+          "运维"
+        ],
+        "segment": "campaign-focused",
+        "notes": ""
+      },
+      "usage": {
+        "campaigns_started": 0,
+        "tasks_done": 0,
+        "articles_generated": 0,
+        "logins": 0,
+        "reports_exported": 0
+      }
+    },
+    {
+      "username": "judge",
+      "email": "judge@chengjun.local",
+      "password": "scrypt:32768:8:1$8atWXP6orgvRzfyo$a53d7d48b5b5cde308e2923dafd934755baf743b34e6a8e3ee8b32fdbe5f82432b6f30bf3ebcb63f73528dbe9e0a2d96ef73879fd3b5d6f3dd035a7e8eca4229",
+      "display_name": "评委只读",
+      "role": "guest",
+      "enabled": true,
+      "created_at": "2026-07-29T00:00:00",
+      "last_login_at": "2026-08-01T12:40:27",
+      "profile": {
+        "tags": [
+          "评委"
+        ],
+        "segment": "light",
+        "notes": "guest 只读，不可 run_task"
+      },
+      "usage": {
+        "campaigns_started": 0,
+        "tasks_done": 0,
+        "articles_generated": 0,
+        "logins": 19,
+        "reports_exported": 4
+      },
+      "password_algo": "werkzeug"
+    },
+    {
+      "username": "smoke_27725200",
+      "email": "smoke_27725200@example.com",
+      "password": "pbkdf2:sha256:100000$j4+xmw2s0I7dEZmJ2CqndQ==$QxhW7sdyGpHS6YcqclpqMgy2z6gv5IY/kTj494TOfQ8=",
+      "password_algo": "werkzeug",
+      "display_name": "SmokeUser",
+      "role": "user",
+      "enabled": true,
+      "created_at": "2026-07-29T21:25:04",
+      "last_login_at": "2026-07-29T21:25:04",
+      "profile": {
+        "tags": [],
+        "segment": "new",
+        "notes": ""
+      },
+      "usage": {
+        "campaigns_started": 1,
+        "tasks_done": 0,
+        "articles_generated": 0,
+        "logins": 1,
+        "reports_exported": 0
+      }
+    },
+    {
+      "username": "smoke_61908300",
+      "email": "smoke_61908300@example.com",
+      "password": "scrypt:32768:8:1$HmuiSkfUGlA7lCY4$894e2c6c27fcc7b517a6bf95db7dead80b269e0f6ca23594a22abbd5f27d4be82928cac76ca0402f7c397a0f2d21dcbe181e7badc52313db73ce5a776f8f55c2",
+      "password_algo": "werkzeug",
+      "display_name": "SmokeUser",
+      "role": "user",
+      "enabled": true,
+      "created_at": "2026-07-30T06:46:16",
+      "last_login_at": "2026-07-30T06:46:16",
+      "profile": {
+        "tags": [],
+        "segment": "new",
+        "notes": ""
+      },
+      "usage": {
+        "campaigns_started": 1,
+        "tasks_done": 0,
+        "articles_generated": 0,
+        "logins": 1,
+        "reports_exported": 0
+      }
+    },
+    {
+      "username": "p1hash_02034800",
+      "email": "p1hash_02034800@example.com",
+      "password": "scrypt:32768:8:1$KO0RWb1BCUlQPUSz$11ddd56ec88821b4dffc1371754d22849bc22d9b2fdc6983c69a6f18c2a56001863ea5949a773ab11ef114f6621af09d5415cdb1c828872f064f9714ce17b36e",
+      "password_algo": "werkzeug",
+      "display_name": "HashMe",
+      "role": "user",
+      "enabled": true,
+      "created_at": "2026-07-30T06:46:33",
+      "last_login_at": "2026-07-30T06:46:34",
+      "profile": {
+        "tags": [],
+        "segment": "new",
+        "notes": ""
+      },
+      "usage": {
+        "campaigns_started": 0,
+        "tasks_done": 0,
+        "articles_generated": 0,
+        "logins": 1,
+        "reports_exported": 0
+      }
+    }
+  ],
+  "roles": {
+    "super_admin": [
+      "*"
+    ],
+    "operator": [
+      "run_task",
+      "view",
+      "export",
+      "queue_control",
+      "schedule_control",
+      "view_all_campaigns"
+    ],
+    "user": [
+      "run_task",
+      "view",
+      "export"
+    ],
+    "guest": [
+      "view",
+      "export"
+    ],
+    "judge": [
+      "view",
+      "export"
+    ]
+  }
+}
