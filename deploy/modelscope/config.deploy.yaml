@@ -84,6 +84,35 @@ llm:
       model: "sensenova-6.8-flash-lite"
       enabled: true
       timeout: 60
+    # —— 扩展 fallback（魔搭部署环境变量注入）——
+    - name: "fallback-书生Intern"
+      api_base: "https://chat.intern-ai.org.cn/api/v1"
+      api_key: "PLACEHOLDER-INTERN-KEY"
+      api_key_env: "INTERN_API_KEY"
+      model: "intern-latest"
+      enabled: true
+      timeout: 90
+    - name: "fallback-阶跃Step5Preview"
+      api_base: "https://api.stepfun.com/v1"
+      api_key: "PLACEHOLDER-STEPFUN5-KEY"
+      api_key_env: "STEPFUN5_API_KEY"
+      model: "step-5-preview"
+      enabled: true
+      timeout: 90
+    - name: "fallback-美团LongCat"
+      api_base: "https://api.longcat.chat/openai/v1"
+      api_key: "PLACEHOLDER-LONGCAT-KEY"
+      api_key_env: "LONGCAT_API_KEY"
+      model: "LongCat-2.0"
+      enabled: true
+      timeout: 90
+    - name: "fallback-云知声Unisound"
+      api_base: "https://maas-api.unisound.com/v1"
+      api_key: "PLACEHOLDER-UNISOUND-KEY"
+      api_key_env: "UNISOUND_API_KEY"
+      model: "u2-flash"
+      enabled: true
+      timeout: 90
 
 rss_sources: []
 
