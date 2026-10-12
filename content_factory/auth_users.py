@@ -344,6 +344,32 @@ def disable_user(username: str) -> bool:
     return set_user_enabled(username, False)
 
 
+def delete_user(identity: str) -> bool:
+    """删除用户（含画像与用量记录）。返回是否命中并删除。
+
+    安全约束：不允许删除最后一个「启用的超级管理员」，否则系统将无人可管。
+    抛 ValueError 表示命中该约束；返回 False 表示用户不存在。
+    """
+    data = _load()
+    u = _find_user(data, identity)
+    if not u:
+        return False
+    role = ROLE_ALIASES.get(u.get("role"), u.get("role"))
+    if role == "super_admin" and u.get("enabled", True):
+        others = [
+            x
+            for x in data["users"]
+            if x is not u
+            and ROLE_ALIASES.get(x.get("role"), x.get("role")) == "super_admin"
+            and x.get("enabled", True)
+        ]
+        if not others:
+            raise ValueError("不能删除最后一个启用的超级管理员")
+    data["users"].remove(u)
+    _save(data)
+    return True
+
+
 def set_user_role(identity: str, role: str) -> bool:
     data = _load()
     u = _find_user(data, identity)

@@ -849,6 +849,69 @@ def export_weekly_report(cid: str) -> str:
     return docx_path or pdf_path or meta["path"]
 
 
+def purge_campaign_exports(cid: str) -> list:
+    """删除该战役的周报导出（{cid}_weekly_report.docx / .pdf），返回被删路径列表。
+
+    战役被删除后这些导出已无归属，留着只会持续累积（尤其冒烟脚本反复跑）。
+    命名是固定的，故精确匹配 cid 前缀，不误删其他战役的导出。
+    """
+    if not cid or os.sep in cid or "/" in cid or ".." in cid:
+        return []
+    removed = []
+    targets = []
+    try:
+        from docx_exporter import EXPORT_DOCX_DIR
+
+        targets.append((EXPORT_DOCX_DIR, f"{cid}_weekly_report.docx"))
+    except Exception:
+        pass
+    targets.append((EXPORT_PDF_DIR, f"{cid}_weekly_report.pdf"))
+    for d, name in targets:
+        fp = os.path.join(d, name)
+        try:
+            if os.path.exists(fp):
+                os.remove(fp)
+                removed.append(fp)
+        except OSError as ex:
+            op_logger.log("campaign_runner", f"清理导出失败 {fp}: {ex}", level="WARN")
+    return removed
+
+
+def delete_campaign_cascade(cid: str, purge_articles: bool = True) -> dict:
+    """删除战役并级联清理其派生数据。
+
+    战役一旦执行就会派生：周报导出（export_docx/export_pdf）与内容工厂稿件
+    （articles/ + articles_meta.json + 向量索引 + qa_reports.json）。只删战役文件
+    会把它们留成孤儿，冒烟脚本反复跑就会持续累积。
+
+    返回 {deleted, exports_purged, articles_purged}；战役不存在时 deleted=False。
+    """
+    art_ids = []
+    if purge_articles:
+        try:
+            import agents as _agents
+
+            art_ids = [
+                a.get("id") for a in _agents.articles_for_campaign(cid) if a.get("id")
+            ]
+        except Exception as ex:
+            op_logger.log("campaign_runner", f"收集派生稿件失败 {cid}: {ex}", level="WARN")
+
+    deleted = store.delete_campaign(cid)
+    exports = purge_campaign_exports(cid)
+
+    purged = []
+    if art_ids:
+        try:
+            import agents as _agents
+
+            purged = [aid for aid in art_ids if _agents.delete_article(aid)]
+        except Exception as ex:
+            op_logger.log("campaign_runner", f"删除派生稿件失败 {cid}: {ex}", level="WARN")
+
+    return {"deleted": deleted, "exports_purged": exports, "articles_purged": purged}
+
+
 def export_weekly_report_docx(cid: str) -> str:
     """仅导出 / 刷新成军周报 Word。若尚无周报 MD 则先汇总。"""
     camp = store.get_campaign(cid)

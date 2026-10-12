@@ -103,6 +103,28 @@ def run_quality_check(article_id: str = None, file_path: str = None) -> dict:
     return result
 
 
+def purge_reports(article_id: str) -> int:
+    """删除某稿件的质量校验报告记录，返回删除条数。
+
+    qa_reports.json 是 git 跟踪文件，稿件删除后必须同步清掉，否则每跑一次冒烟就脏一次仓库。
+    """
+    if not article_id or not os.path.exists(QA_REPORT):
+        return 0
+    try:
+        with open(QA_REPORT, "r", encoding="utf-8") as f:
+            reports = json.load(f)
+    except Exception:
+        return 0
+    if not isinstance(reports, list):
+        return 0
+    kept = [r for r in reports if not (isinstance(r, dict) and r.get("article_id") == article_id)]
+    removed = len(reports) - len(kept)
+    if removed:
+        with open(QA_REPORT, "w", encoding="utf-8") as f:
+            json.dump(kept, f, ensure_ascii=False, indent=2)
+    return removed
+
+
 def publish_to_wechat_draft(article_id: str) -> dict:
     """推送到微信公众号草稿箱（draft-first；未配置凭证 → 明确 skipped，不伪装成功）。"""
     import wechat_publisher

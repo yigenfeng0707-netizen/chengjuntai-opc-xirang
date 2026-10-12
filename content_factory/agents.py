@@ -334,6 +334,48 @@ def link_article_campaign(article_id: str, campaign_id: str) -> dict:
     return found
 
 
+def delete_article(article_id: str) -> bool:
+    """删除稿件：正文文件 + articles_meta 记录 + 向量索引，三者保持一致。
+
+    返回是否命中。单个子步骤失败只告警不中断，避免留下半删状态。
+    """
+    if not article_id:
+        return False
+    meta_list = list_articles()
+    target = next((a for a in meta_list if a.get("id") == article_id), None)
+    if not target:
+        return False
+
+    fname = target.get("file") or ""
+    if fname:
+        fpath = os.path.join(ARTICLES_DIR, os.path.basename(fname))
+        try:
+            if os.path.exists(fpath):
+                os.remove(fpath)
+        except OSError as ex:
+            op_logger.log("agent_pipeline", f"删除稿件正文失败 {article_id}: {ex}", level="WARN")
+
+    kept = [a for a in meta_list if a.get("id") != article_id]
+    with open(ARTICLES_META, "w", encoding="utf-8") as f:
+        json.dump(kept, f, ensure_ascii=False, indent=2)
+
+    try:
+        vector_store.delete_document(article_id)
+    except Exception as ex:
+        op_logger.log("agent_pipeline", f"删除稿件索引失败 {article_id}: {ex}", level="WARN")
+
+    # 质量校验报告（git 跟踪的 data/qa_reports.json）也要同步清掉
+    try:
+        import quality_gate
+
+        quality_gate.purge_reports(article_id)
+    except Exception as ex:
+        op_logger.log("agent_pipeline", f"删除稿件质检报告失败 {article_id}: {ex}", level="WARN")
+
+    op_logger.log("agent_pipeline", f"稿件已删除 {article_id}（{fname}）")
+    return True
+
+
 def articles_for_campaign(campaign_id: str) -> list:
     return [a for a in list_articles() if a.get("campaign_id") == campaign_id]
 

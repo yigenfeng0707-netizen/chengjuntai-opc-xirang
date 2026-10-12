@@ -65,6 +65,44 @@ def read_events(username: Optional[str] = None, limit: int = 200) -> list:
     return rows[-limit:]
 
 
+def purge_events(identities) -> int:
+    """删除指定身份的行为事件，返回删除条数（用于用户删除后的痕迹清理）。
+
+    append-only 文件就地重写：先写临时文件再 os.replace，读者不会看到半截文件。
+    """
+    if not identities:
+        return 0
+    if isinstance(identities, str):
+        identities = [identities]
+    keys = {str(i).strip().lower() for i in identities if str(i or "").strip()}
+    if not keys or not os.path.exists(EVENTS_FILE):
+        return 0
+    removed = 0
+    kept = []
+    with _lock:
+        with open(EVENTS_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                s = line.strip()
+                if not s:
+                    continue
+                try:
+                    row = json.loads(s)
+                except json.JSONDecodeError:
+                    kept.append(s)
+                    continue
+                if str(row.get("user") or "").strip().lower() in keys:
+                    removed += 1
+                    continue
+                kept.append(s)
+        if removed:
+            tmp = EVENTS_FILE + f".{os.getpid()}.tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                for s in kept:
+                    f.write(s + "\n")
+            os.replace(tmp, EVENTS_FILE)
+    return removed
+
+
 def _count_actions(events: list) -> dict:
     counts = {}
     for e in events:

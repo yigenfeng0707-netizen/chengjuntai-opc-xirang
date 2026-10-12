@@ -3,6 +3,7 @@
 import os
 import json
 import time
+import shutil
 import datetime
 import threading
 from typing import Optional
@@ -239,6 +240,28 @@ def update_campaign(cid: str, **kwargs) -> Optional[dict]:
         if not _write_json(camp, _path(cid)):
             return None
         return camp
+
+
+def delete_campaign(cid: str) -> bool:
+    """删除战役：JSON 记录 + 产物目录。幂等，返回是否命中了记录。
+
+    仅供管理端清理与自动化测试收尾使用；演示快照（demo_snapshot）由调用方自行把关。
+    """
+    if not cid or os.sep in cid or "/" in cid or ".." in cid:
+        # 防路径穿越：cid 只应是纯文件名
+        return False
+    with _lock:
+        fp = _path(cid)
+        existed = os.path.exists(fp)
+        if existed:
+            try:
+                os.remove(fp)
+            except OSError:
+                return False
+        art_dir = os.path.join(CAMPAIGNS_DIR, cid)
+        if os.path.isdir(art_dir):
+            shutil.rmtree(art_dir, ignore_errors=True)
+        return existed
 
 
 def list_campaigns(limit: int = 50) -> list:

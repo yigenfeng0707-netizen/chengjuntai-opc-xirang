@@ -96,6 +96,40 @@ def index_document(doc_id: str, title: str, content: str, tags: list = None, sou
     _save()
 
 
+def delete_document(doc_id: str) -> bool:
+    """删除指定文档的检索索引（元数据 + 向量），返回是否命中。
+
+    用于稿件删除后的索引同步；索引清空时一并移除向量文件，避免留下与 meta 不一致的旧矩阵。
+    """
+    if not doc_id:
+        return False
+    _load_storage()
+    before = len(_storage["meta"])
+    _storage["meta"] = [m for m in _storage["meta"] if m.get("doc_id") != doc_id]
+    if len(_storage["meta"]) == before:
+        return False
+    if _HAS_SKLEARN and _storage["meta"]:
+        try:
+            texts = [m["text_feat"] for m in _storage["meta"]]
+            vec = TfidfVectorizer()
+            _storage["matrix"] = vec.fit_transform(texts)
+            _storage["vectorizer"] = vec
+        except Exception:
+            _storage["matrix"] = None
+            _storage["vectorizer"] = None
+    else:
+        _storage["matrix"] = None
+        _storage["vectorizer"] = None
+    _save()
+    if not _storage["meta"]:
+        try:
+            if os.path.exists(VECTORS_FILE):
+                os.remove(VECTORS_FILE)
+        except OSError:
+            pass
+    return True
+
+
 def search(query: str, topk: int = 5) -> list:
     """语义检索，返回最相关文档；sklearn 缺失时降级为关键词重叠匹配。"""
     _load_storage()

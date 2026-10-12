@@ -59,6 +59,20 @@ class Matrix:
         return all(r["pass"] for r in self.rows)
 
 
+def _cleanup(base: str, token: str, m: Matrix, cid=None, aid=None):
+    """删除本次冒烟产生的战役与稿件。
+
+    冒烟会真实落盘：战役进 data/campaigns/，稿件进 **git 跟踪的** articles/ 与
+    data/articles_meta.json。不清理就会每跑一次脏一次仓库，故收尾必须执行。
+    """
+    if cid:
+        st, _ = _req(base, f"/api/campaign/{cid}/delete", "POST", token=token, timeout=30)
+        m.add("cleanup_campaign", st == 200, f"{cid} -> HTTP {st}")
+    if aid:
+        st, _ = _req(base, f"/api/article/{aid}/delete", "POST", token=token, timeout=30)
+        m.add("cleanup_article", st == 200, f"{aid} -> HTTP {st}")
+
+
 def run_mock(m: Matrix):
     sys.path.insert(0, CF)
     os.chdir(CF)
@@ -75,23 +89,59 @@ def run_mock(m: Matrix):
 
     from campaign import runner, store
 
-    camp = runner.start_campaign("冒烟获客", template="lead_gen", allow_mock=True, auto_approve=False)
-    m.add("mock_start_planned", camp.get("status") == "planned", camp.get("status"))
-    camp = runner.approve_gate(camp["id"], note="smoke")
-    camp = store.get_campaign(camp["id"])
-    m.add("mock_after_approve", camp["status"] in ("awaiting_review", "completed", "failed"), camp["status"])
-    if camp["status"] in ("awaiting_review", "completed"):
-        path = runner.export_weekly_report(camp["id"])
-        m.add("mock_report", bool(path), path or "")
-        if camp["status"] == "awaiting_review":
-            camp = runner.approve_gate(camp["id"], note="final")
-        m.add("mock_completed", store.get_campaign(camp["id"])["status"] == "completed")
-    else:
-        m.add("mock_report", False, "campaign failed before report")
-        m.add("mock_completed", False, camp.get("status"))
+    cid = None
+    try:
+        camp = runner.start_campaign("冒烟获客", template="lead_gen", allow_mock=True, auto_approve=False)
+        cid = camp["id"]
+        m.add("mock_start_planned", camp.get("status") == "planned", camp.get("status"))
+        camp = runner.approve_gate(cid, note="smoke")
+        # approve_gate 内部走 run_pending_tasks_async：返回时状态是 running，需轮询到终态
+        deadline = time.time() + 180
+        camp = store.get_campaign(cid) or {}
+        while (
+            camp.get("status") not in ("awaiting_review", "completed", "failed")
+            and time.time() < deadline
+        ):
+            time.sleep(1)
+            camp = store.get_campaign(cid) or {}
+        m.add("mock_after_approve", camp["status"] in ("awaiting_review", "completed", "failed"), camp["status"])
+        if camp["status"] in ("awaiting_review", "completed"):
+            path = runner.export_weekly_report(cid)
+            m.add("mock_report", bool(path), path or "")
+            if camp["status"] == "awaiting_review":
+                camp = runner.approve_gate(cid, note="final")
+            m.add("mock_completed", store.get_campaign(cid)["status"] == "completed")
+        else:
+            m.add("mock_report", False, "campaign failed before report")
+            m.add("mock_completed", False, camp.get("status"))
+    finally:
+        # 收尾：mock 战役同样是落盘残留（含周报导出与派生稿件），跑完（哪怕中途抛错）都要删掉
+        if cid:
+            try:
+                r = runner.delete_campaign_cascade(cid)
+                m.add(
+                    "cleanup_campaign",
+                    bool(r.get("deleted")) or not os.path.exists(
+                        os.path.join(CF, "data", "campaigns", f"{cid}.json")
+                    ),
+                    f"{cid} removed (exports={len(r.get('exports_purged') or [])} "
+                    f"articles={len(r.get('articles_purged') or [])})",
+                )
+            except Exception as ex:  # noqa: BLE001
+                m.add("cleanup_campaign", False, f"{type(ex).__name__}: {ex}")
 
 
-def run_http(base: str, m: Matrix, skip_llm_heavy: bool):
+def run_http(base: str, m: Matrix, skip_llm_heavy: bool, wait_sec: int = 900):
+    """HTTP 冒烟：跑完无论成败都清理本次产生的战役与稿件（见 _cleanup）。"""
+    state = {"wait_sec": wait_sec}
+    try:
+        _run_http_inner(base, m, skip_llm_heavy, state)
+    finally:
+        _cleanup(base, state.get("token") or "", m, cid=state.get("cid"), aid=state.get("aid"))
+
+
+def _run_http_inner(base: str, m: Matrix, skip_llm_heavy: bool, state: dict):
+    wait_sec = int(state.get("wait_sec") or 900)
     st, health = _req(base, "/api/health", timeout=10)
     llm = (health or {}).get("llm") or {}
     m.add(
@@ -103,6 +153,7 @@ def run_http(base: str, m: Matrix, skip_llm_heavy: bool):
 
     st, login = _req(base, "/api/login", "POST", {"u": "admin", "p": "chengjun2026"}, timeout=10)
     token = (login or {}).get("token")
+    state["token"] = token
     m.add("login_admin", st == 200 and bool(token), f"role={(login or {}).get('role')}")
 
     st, jlogin = _req(base, "/api/login", "POST", {"u": "judge", "p": "judge2026"}, timeout=10)
@@ -146,10 +197,25 @@ def run_http(base: str, m: Matrix, skip_llm_heavy: bool):
         timeout=180,
     )
     cid = (camp or {}).get("id")
+    state["cid"] = cid
+
+    # /api/campaign/start 是异步的：HTTP 立即返回刚创建的 draft 快照，计划在后台线程生成。
+    # 必须轮询等 status 变成 planned（watchdog 90s 兜底降级）再 approve，否则必然 400。
+    camp_status = (camp or {}).get("status")
+    if st == 200 and cid:
+        deadline = time.time() + 120
+        while time.time() < deadline:
+            st2, detail = _req(base, f"/api/campaign/{cid}", token=token, timeout=30)
+            if st2 == 200 and (detail or {}).get("status"):
+                camp_status = detail["status"]
+                if camp_status != "planning":
+                    break
+            time.sleep(2)
+
     m.add(
         "campaign_start",
-        st == 200 and bool(cid) and (camp or {}).get("status") == "planned",
-        f"status={st} id={cid} camp_status={(camp or {}).get('status')} {time.time()-t0:.1f}s",
+        st == 200 and bool(cid) and camp_status == "planned",
+        f"status={st} id={cid} camp_status={camp_status} {time.time()-t0:.1f}s",
     )
     if not cid:
         m.add("campaign_approve_run", False, "no campaign id")
@@ -168,18 +234,26 @@ def run_http(base: str, m: Matrix, skip_llm_heavy: bool):
         timeout=600,
     )
     after = after or {}
-    # approve may return mid-run; poll until terminal-ish
+    # approve 是异步的：立即返回，任务在后台跑。用墙钟截止时间轮询到终态。
+    # 真实 LLM 下 5 个任务可能跑十几分钟，故默认给 900s（--wait-sec 可调）。
     terminal = {"awaiting_review", "completed", "failed"}
-    for _ in range(60):
+    deadline = time.time() + wait_sec
+    last_status = after.get("status")
+    while time.time() < deadline:
         st2, detail = _req(base, f"/api/campaign/{cid}", token=token, timeout=30)
-        if st2 == 200 and (detail or {}).get("status") in terminal:
+        if st2 != 200:
+            break
+        last_status = (detail or {}).get("status")
+        if last_status in terminal:
             after = detail
             break
-        if st2 == 200 and (detail or {}).get("status") == "running":
-            time.sleep(3)
+        if last_status == "running":
+            time.sleep(5)
             continue
         break
     status = after.get("status")
+    if status not in terminal:
+        print(f"[..] campaign {cid} 在 {wait_sec}s 内未到终态（最后状态={last_status}）")
     m.add(
         "campaign_approve_run",
         st == 200 and status in ("awaiting_review", "completed"),
@@ -225,6 +299,7 @@ def run_http(base: str, m: Matrix, skip_llm_heavy: bool):
         st == 200 and bool((art_gen or {}).get("id")),
         f"http={st} id={(art_gen or {}).get('id')} review={(art_gen or {}).get('review_pass')} {time.time()-t0:.1f}s",
     )
+    state["aid"] = (art_gen or {}).get("id")
 
 
 def main():
@@ -232,12 +307,13 @@ def main():
     ap.add_argument("--base", default="http://127.0.0.1:8090")
     ap.add_argument("--mock", action="store_true", help="进程内 mock，不打 HTTP")
     ap.add_argument("--skip-llm-heavy", action="store_true", help="只测 health/login/ACL/列表")
+    ap.add_argument("--wait-sec", type=int, default=900, help="等战役跑到终态的最长秒数（默认 900）")
     args = ap.parse_args()
     m = Matrix()
     if args.mock:
         run_mock(m)
     else:
-        run_http(args.base.rstrip("/"), m, args.skip_llm_heavy)
+        run_http(args.base.rstrip("/"), m, args.skip_llm_heavy, wait_sec=args.wait_sec)
     print("\n" + json.dumps({"ok": m.ok, "checks": m.rows}, ensure_ascii=False, indent=2))
     sys.exit(0 if m.ok else 1)
 

@@ -532,6 +532,46 @@ def campaign_detail(cid: str, user=Depends(_token_user)):
     return c
 
 
+@app.post("/api/campaign/{cid}/delete")
+def campaign_delete(cid: str, user=Depends(_token_user), purge_articles: bool = True):
+    """删除战役（属主或超管）。演示快照战役仅超管可删，避免评委路径被误清空。
+
+    级联清理：战役周报导出（docx/pdf）、以及该战役派生出的内容工厂稿件
+    （articles_meta.campaign_id == cid）。后者会写进 git 跟踪的 articles/，
+    不级联删除就会持续污染仓库。传 purge_articles=false 可保留稿件。
+    """
+    c = camp_store.get_campaign(cid)
+    if not c:
+        raise HTTPException(404, "战役不存在")
+    owner = c.get("created_by") or ""
+    is_owner = owner in (user.get("username"), user.get("email") or "")
+    is_super = auth_users.is_super_admin(user)
+    if not (is_super or is_owner):
+        raise HTTPException(403, "无权删除该战役")
+    if c.get("demo_snapshot") and not is_super:
+        raise HTTPException(403, "演示快照战役仅超级管理员可删除")
+
+    result = camp_runner.delete_campaign_cascade(cid, purge_articles=purge_articles)
+    if not result.get("deleted"):
+        raise HTTPException(404, "战役不存在")
+
+    user_analytics.log_event(
+        user["username"],
+        "campaign_delete",
+        {
+            "cid": cid,
+            "exports_purged": len(result.get("exports_purged") or []),
+            "articles_purged": len(result.get("articles_purged") or []),
+        },
+    )
+    return {
+        "ok": True,
+        "id": cid,
+        "exports_purged": len(result.get("exports_purged") or []),
+        "articles_purged": result.get("articles_purged") or [],
+    }
+
+
 class GateReq(BaseModel):
     note: str = ""
 
@@ -1498,6 +1538,10 @@ class ProfileReq(BaseModel):
     segment: Optional[str] = None
 
 
+class UserDeleteReq(BaseModel):
+    identity: str
+
+
 @app.get("/api/admin/usage")
 def admin_usage(user=Depends(_token_user)):
     _require_super_admin(user)
@@ -1558,6 +1602,42 @@ def admin_user_profile(req: ProfileReq, user=Depends(_token_user)):
     if not updated:
         raise HTTPException(404, "用户不存在")
     return {"ok": True, "user": updated}
+
+
+@app.post("/api/admin/user/delete")
+def admin_user_delete(req: UserDeleteReq, user=Depends(_token_user)):
+    """删除用户（仅超级管理员）。用于清理测试残留账号，避免只能禁用不能删除。"""
+    _require_super_admin(user)
+    target = auth_users.get_user(req.identity)
+    if not target:
+        raise HTTPException(404, "用户不存在")
+    if (target.get("username") or "").lower() == (user.get("username") or "").lower():
+        raise HTTPException(400, "不能删除当前登录账号")
+    try:
+        deleted = auth_users.delete_user(req.identity)
+    except ValueError as ex:
+        raise HTTPException(400, str(ex))
+    if not deleted:
+        raise HTTPException(404, "用户不存在")
+    purged = user_analytics.purge_events(
+        [target.get("username"), target.get("email")]
+    )
+    user_analytics.log_event(
+        user["username"],
+        "admin_delete_user",
+        {"target": req.identity, "events_purged": purged},
+    )
+    return {"ok": True, "deleted": target.get("username"), "events_purged": purged}
+
+
+@app.post("/api/article/{aid}/delete")
+def article_delete(aid: str, user=Depends(_token_user)):
+    """删除内容工厂稿件（正文文件 + 元数据 + 向量索引）。仅超级管理员。"""
+    _require_super_admin(user)
+    if not agents.delete_article(aid):
+        raise HTTPException(404, "稿件不存在")
+    user_analytics.log_event(user["username"], "article_delete", {"aid": aid})
+    return {"ok": True, "id": aid}
 
 
 def start():
