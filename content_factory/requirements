@@ -9,6 +9,7 @@ fastapi>=0.110
 uvicorn>=0.27
 jinja2>=3.1
 python-multipart>=0.0.9
+werkzeug>=3.0  # auth_users 密码哈希（scrypt 校验），勿删——缺失则所有哈希账号无法登录
 
 # Config
 pyyaml>=6.0
