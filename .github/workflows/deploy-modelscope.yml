@@ -1,0 +1,87 @@
+name: deploy-modelscope
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  MS_OWNER: gsym236998
+  MS_REPO_NAME: chengjuntai
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Assemble studio payload
+        run: |
+          pip install pyyaml
+          python deploy/modelscope/assemble.py
+
+      - name: Create studio if not exists
+        run: |
+          code=$(curl -s -o /tmp/get.json -w '%{http_code}' \
+            -H "Authorization: Bearer ${{ secrets.MODELSCOPE_TOKEN }}" \
+            -H "User-Agent: Mozilla/5.0" \
+            "https://modelscope.cn/openapi/v1/studios/${MS_OWNER}/${MS_REPO_NAME}")
+          echo "GET studio -> $code"
+          if [ "$code" = "404" ]; then
+            curl -s -X POST \
+              -H "Authorization: Bearer ${{ secrets.MODELSCOPE_TOKEN }}" \
+              -H "User-Agent: Mozilla/5.0" \
+              -H "Content-Type: application/json" \
+              -d "{\"owner\":\"${MS_OWNER}\",\"repo_name\":\"${MS_REPO_NAME}\",\"sdk_type\":\"docker\",\"visibility\":\"public\"}" \
+              "https://modelscope.cn/openapi/v1/studios"
+            echo "created, waiting 20s"
+            sleep 20
+          else
+            cat /tmp/get.json
+          fi
+
+      - name: Push to ModelScope git
+        run: |
+          cd studio
+          git init -b master
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -A
+          git commit -m "deploy: ${{ github.sha }}"
+          git remote add ms "https://oauth2:${{ secrets.MODELSCOPE_GIT_TOKEN }}@www.modelscope.cn/studios/${MS_OWNER}/${MS_REPO_NAME}.git"
+          # 保留远端历史：fetch 后 merge（unrelated histories，冲突保本地），随后强推
+          git fetch ms master || true
+          if git rev-parse -q --verify FETCH_HEAD >/dev/null 2>&1; then
+            git merge --allow-unrelated-histories -X ours FETCH_HEAD --no-edit || {
+              git checkout --ours . && git add -A && git commit -m "resolve: keep local" || true
+            }
+          fi
+          git push -f ms HEAD:master
+
+      - name: Trigger deploy
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.MODELSCOPE_TOKEN }}" \
+            -H "User-Agent: Mozilla/5.0" \
+            "https://modelscope.cn/openapi/v1/studios/${MS_OWNER}/${MS_REPO_NAME}/deploy"
+
+      - name: Watch deployment status
+        run: |
+          sleep 30
+          for i in $(seq 1 30); do
+            st=$(curl -s -H "Authorization: Bearer ${{ secrets.MODELSCOPE_TOKEN }}" \
+                   -H "User-Agent: Mozilla/5.0" \
+                   "https://modelscope.cn/openapi/v1/studios/${MS_OWNER}/${MS_REPO_NAME}")
+            status=$(echo "$st" | python3 -c "import sys,json;d=json.load(sys.stdin);print((d.get('data') or {}).get('status',''))" 2>/dev/null || echo "")
+            echo "[$i] status=$status"
+            case "$status" in
+              Running) echo "DEPLOYED"; exit 0;;
+              Failed|Error|BuildFailed) echo "FAILED"; exit 1;;
+            esac
+            sleep 30
+          done
+          echo "TIMEOUT waiting for Running"; exit 1

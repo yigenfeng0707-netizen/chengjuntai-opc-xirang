@@ -1,0 +1,59 @@
+name: keepalive
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+env:
+  MS_OWNER: gsym236998
+  MS_REPO_NAME: chengjuntai
+  APP_URL: https://gsym236998-chengjuntai.ms.show
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe health, self-heal if down
+        run: |
+          st=$(curl -s -H "Authorization: Bearer ${{ secrets.MODELSCOPE_TOKEN }}" \
+                 -H "User-Agent: Mozilla/5.0" \
+                 "https://modelscope.cn/openapi/v1/studios/${MS_OWNER}/${MS_REPO_NAME}")
+          status=$(echo "$st" | python3 -c "import sys,json;d=json.load(sys.stdin);print((d.get('data') or {}).get('status',''))" 2>/dev/null || echo "")
+          echo "studio status=$status"
+          if [ "$status" != "Running" ]; then
+            echo "Not running -> trigger deploy (self-heal)"
+            curl -s -X POST -H "Authorization: Bearer ${{ secrets.MODELSCOPE_TOKEN }}" \
+              -H "User-Agent: Mozilla/5.0" \
+              "https://modelscope.cn/openapi/v1/studios/${MS_OWNER}/${MS_REPO_NAME}/deploy"
+            exit 0
+          fi
+          # 公网探测本身即为保活访问（CDN 拦 curl 默认 UA，必须带浏览器 UA）
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36" \
+            "${APP_URL}/api/health")
+          echo "health http_code=$code"
+          if [ "$code" != "200" ]; then
+            echo "Health probe failed ($code) -> redeploy"
+            curl -s -X POST -H "Authorization: Bearer ${{ secrets.MODELSCOPE_TOKEN }}" \
+              -H "User-Agent: Mozilla/5.0" \
+              "https://modelscope.cn/openapi/v1/studios/${MS_OWNER}/${MS_REPO_NAME}/deploy"
+          fi
+
+      - name: Cleanup old keepalive runs (keep 1 day)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cutoff=$(date -u -d '1 day ago' +%s)
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/workflows/keepalive.yml/runs?per_page=100" \
+            -q '.workflow_runs[] | [.id, .created_at] | @tsv' 2>/dev/null | \
+          while IFS=$'\t' read -r id created; do
+            ts=$(date -u -d "$created" +%s 2>/dev/null || echo 0)
+            if [ "$ts" -lt "$cutoff" ]; then
+              gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/runs/$id" || true
+            fi
+          done
