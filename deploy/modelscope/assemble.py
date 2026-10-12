@@ -17,7 +17,9 @@ CF = os.path.join(ROOT, "content_factory")
 STUDIO = os.path.join(ROOT, "studio")
 
 EXCLUDE_DIRS = {"__pycache__", ".git", ".trae", "node_modules", "logs"}
-EXCLUDE_FILES = {".env", ".DS_Store"}
+# config.yaml 含真实 Key 且已 gitignore（本地有/仓库无）——一律排除，
+# 部署配置统一由 deploy/modelscope/config.deploy.yaml 提供（可公开，Key 走环境变量）
+EXCLUDE_FILES = {".env", ".DS_Store", "config.yaml", "config.wechat.local.yaml"}
 
 
 def copy_tree(src, dst):
@@ -34,22 +36,12 @@ def copy_tree(src, dst):
             shutil.copy2(s, os.path.join(dst, name))
 
 
-def sanitize_config(path):
-    with open(path, "r", encoding="utf-8") as f:
+def place_config(dst_path):
+    """用部署专用脱敏配置生成 content_factory/config.yaml（0.0.0.0:7860，Key 占位）"""
+    src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.deploy.yaml")
+    with open(src, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f) or {}
-    # 端口/监听：魔搭硬性要求 7860
-    cfg["web_host"] = "0.0.0.0"
-    cfg["web_port"] = 7860
-    # LLM Key 脱敏：真实 Key 走魔搭空间环境变量（XIRANG_API_KEY 等）
-    providers = (cfg.get("llm") or {}).get("providers") or []
-    for p in providers:
-        if p.get("api_key"):
-            p["api_key"] = "DEPLOY-PLACEHOLDER-USE-ENV"
-    # 本机敏感字段清空
-    for k in ("smtp_user", "smtp_password"):
-        if cfg.get(k):
-            cfg[k] = ""
-    with open(path, "w", encoding="utf-8") as f:
+    with open(dst_path, "w", encoding="utf-8") as f:
         yaml.safe_dump(cfg, f, allow_unicode=True, sort_keys=False)
 
 
@@ -58,7 +50,7 @@ def main():
         shutil.rmtree(STUDIO)
     os.makedirs(STUDIO)
     copy_tree(CF, os.path.join(STUDIO, "content_factory"))
-    sanitize_config(os.path.join(STUDIO, "content_factory", "config.yaml"))
+    place_config(os.path.join(STUDIO, "content_factory", "config.yaml"))
     here = os.path.dirname(os.path.abspath(__file__))
     shutil.copy2(os.path.join(here, "Dockerfile"), os.path.join(STUDIO, "Dockerfile"))
     shutil.copy2(os.path.join(here, "ms_deploy.json"), os.path.join(STUDIO, "ms_deploy.json"))

@@ -1,0 +1,95 @@
+# ========== 成军台 · 魔搭创空间部署专用配置（可公开） ==========
+# 结构与本地 config.yaml 一致；所有真实 Key/密码用占位符。
+# 运行时真实 Key 由魔搭空间环境变量注入（llm_client 优先读 api_key_env）：
+#   XIRANG_API_KEY / STEPFUN_API_KEY / SENSENOVA_API_KEY
+# 登录鉴权由 users.json（scrypt 哈希）驱动，web_password 字段代码中不使用。
+
+project_root: "./content_factory"
+bid_pipeline_root: ""
+knowledge_sync_folder: "${bid_pipeline_root}/knowledge/library"
+vector_sync_path: "${bid_pipeline_root}/vector_db"
+
+product_name: "成军台"
+product_slogan: "息壤育智 · 一人成军"
+contest_track: "惠民产品创新 / AI+自选开放场景"
+
+demo_mode:
+  allow_mock_llm: false
+  auto_approve_gate: false
+
+nl2sql_mcp_url: "http://127.0.0.1:8765/mcp"
+nl2sql_default_dataset: "bid_projects"
+nl2sql_default_user_id: ""
+
+nl2sql_backend:
+  znws_query_url: "http://127.0.0.1:8082/api/v1"
+  api_token: "CHANGE_ME_TO_RANDOM_TOKEN"
+  mcp_host: "127.0.0.1"
+  mcp_port: 8765
+  cache_ttl: 300
+
+auto_path_fix: true
+network_timeout: 15
+max_retry: 3
+retry_interval: 10
+
+smtp_server: ""
+smtp_port: 465
+smtp_user: ""
+smtp_password: ""
+mail_receivers: []
+
+# 魔搭平台硬性要求：0.0.0.0:7860
+web_host: "0.0.0.0"
+web_port: 7860
+web_username: "admin"
+web_password: "PLACEHOLDER-LOGIN-VIA-USERS-JSON"
+
+log_roll_days: 30
+
+llm:
+  enabled: true
+  temperature: 0.7
+  max_tokens: 8192
+  enable_thinking: false
+  require_real_llm: true
+  providers:
+    # —— Path B：主办方天翼云息壤（参赛正式 primary）——
+    - name: "primary-天翼云息壤-星辰TokenHub"
+      api_base: "https://wishub-x6.ctyun.cn/v1"
+      api_key: "PLACEHOLDER-XIRANG-KEY"
+      api_key_env: "XIRANG_API_KEY"
+      model: "f23c54bf38b64ee194b28783d61be788"
+      enabled: true
+      timeout: 90
+    - name: "secondary-星辰TokenHub"
+      api_base: "https://api.ctyun.cn/aiproapi/v1"
+      api_key: "PLACEHOLDER-TOKENHUB-KEY"
+      api_key_env: "TOKENHUB_API_KEY"
+      model: "DeepSeek-V3"
+      enabled: false
+      timeout: 90
+    # —— Interim fallback（primary 故障时降级）——
+    - name: "interim-阶跃星辰StepFun"
+      api_base: "https://api.stepfun.com/step_plan/v1"
+      api_key: "PLACEHOLDER-STEPFUN-KEY"
+      api_key_env: "STEPFUN_API_KEY"
+      model: "step-3.7-flash"
+      enabled: true
+      timeout: 90
+    - name: "interim-商汤SenseNova"
+      api_base: "https://token.sensenova.cn/v1"
+      api_key: "PLACEHOLDER-SENSENOVA-KEY"
+      api_key_env: "SENSENOVA_API_KEY"
+      model: "sensenova-6.8-flash-lite"
+      enabled: true
+      timeout: 60
+
+rss_sources: []
+
+article:
+  target_min_words: 600
+  target_max_words: 2500
+  require_code_block: false
+
+reserved_ports: [8082, 8765]
