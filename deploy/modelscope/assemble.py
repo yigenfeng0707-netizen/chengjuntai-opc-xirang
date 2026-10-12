@@ -64,6 +64,23 @@ def copy_support_modules():
             shutil.copy2(src, os.path.join(STUDIO, name))
 
 
+def copy_seed_scripts():
+    """拷贝演示数据种子脚本到 studio/scripts/（容器内 /app/scripts/）。
+
+    content_factory/data/campaigns/ 与 topics.json 都被 .gitignore 排除，仓库里没有，
+    于是镜像里演示战役为 0 → 公网「评委 60 秒体验」会落到「未找到样例战役」。
+    构建期在 Dockerfile 里跑这两个脚本幂等写入演示周包，即可让容器自带样例看板。
+
+    两个脚本都用 dirname(dirname(__file__)) 推 ROOT，必须落在 /app/scripts/ 下才对得上。
+    """
+    dst_dir = os.path.join(STUDIO, "scripts")
+    os.makedirs(dst_dir, exist_ok=True)
+    for name in ("seed_demo_week.py", "seed_demo_campaigns.py"):
+        src = os.path.join(ROOT, "scripts", name)
+        if os.path.isfile(src):
+            shutil.copy2(src, os.path.join(dst_dir, name))
+
+
 def main():
     if os.path.exists(STUDIO):
         shutil.rmtree(STUDIO)
@@ -72,6 +89,7 @@ def main():
     place_config(os.path.join(STUDIO, "content_factory", "config.yaml"))
     place_users(os.path.join(STUDIO, "content_factory", "users.json"))
     copy_support_modules()
+    copy_seed_scripts()
     here = os.path.dirname(os.path.abspath(__file__))
     shutil.copy2(os.path.join(here, "Dockerfile"), os.path.join(STUDIO, "Dockerfile"))
     shutil.copy2(os.path.join(here, "ms_deploy.json"), os.path.join(STUDIO, "ms_deploy.json"))

@@ -27,6 +27,16 @@ RUN cd /app && python seed_demo_db.py
 RUN cd /app/content_factory \
     && mkdir -p articles export_pdf export_docx logs data vector_db knowledge templates
 
+# 演示数据种子脚本（content_factory/data/campaigns 与 topics.json 都被 .gitignore 排除，
+# 仓库里没有，镜像里必须构建期写入，否则公网「评委 60 秒体验」会落到「未找到样例战役」）
+COPY scripts /app/scripts
+
+# 构建期写入演示周包：5 个已完成样例战役 + 选题池 + 工厂稿件 + 向量库。
+# 两个脚本都幂等（同 ID 已存在即跳过），重复构建不会重复写入。
+RUN cd /app/content_factory \
+    && python ../scripts/seed_demo_week.py \
+    && python ../scripts/seed_demo_campaigns.py
+
 WORKDIR /app/content_factory
 ENV PYTHONUNBUFFERED=1
 EXPOSE 7860
